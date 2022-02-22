@@ -119,13 +119,19 @@ def download_single_experiment(
 
 def load_experiment(
         tuner_name: str,
-        download_if_not_found: bool = True
+        download_if_not_found: bool = True,
+        force_download: bool = False,
 ) -> ExperimentResult:
     """
     :param tuner_name: name of a tuning experiment previously run
     :param download_if_not_found: whether to fetch the experiment from s3 if not found locally
+    :param force_download: whether to force fetching the experiment from s3 even if found locally
     :return:
     """
+    if force_download and download_if_not_found:
+        logging.info(f"force_download=True so trying to download experiment {tuner_name} from s3.")
+        download_single_experiment(tuner_name=tuner_name)
+    
     path = experiment_path(tuner_name)
 
     metadata_path = path / "metadata.json"
