@@ -1,3 +1,15 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
 import logging
 import numpy as np
 
@@ -44,7 +56,7 @@ def load_glue_datasets(training_args, model_args, data_args):
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
-    if model_type.startswith('gpt2'):
+    if model_type.startswith("gpt2"):
         tokenizer.pad_token = tokenizer.eos_token
 
     # Preprocessing the raw_datasets
@@ -104,7 +116,7 @@ def load_glue_datasets(training_args, model_args, data_args):
     )  # fix seed, all trials have the same data split
     valid_dataset = split["test"]
 
-    if data_args.task_name in ['sst2', 'qqp', 'qnli', 'mnli']:
+    if data_args.task_name in ["sst2", "qqp", "qnli", "mnli"]:
         valid_dataset = Subset(
             valid_dataset,
             np.random.choice(len(valid_dataset), 2048).tolist(),

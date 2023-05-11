@@ -50,7 +50,8 @@ def register_mask(module, mask):
 if __name__ == "__main__":
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    model = AutoModelForCausalLM.from_pretrained('gpt2')
+
+    model = AutoModelForCausalLM.from_pretrained("gpt2")
     ffn_mask = torch.randint(0, 2, (model.config.n_layer, model.config.hidden_size * 4))
     handles = apply_neuron_mask_gpt2(model, ffn_mask)
     tokenizer = AutoTokenizer.from_pretrained("gpt2")

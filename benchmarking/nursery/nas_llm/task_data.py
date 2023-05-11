@@ -11,17 +11,17 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 TASK_TO_SEQ_LEN = {
-        "stsb": 128,
-        "mrpc": 128,
-        "rte": 128,
-        "sst2": 64,
-        "qqp": 128,
-        "qnli": 128,
-        "cola": 64,
-        "mnli": 128,
-        "mnli-m": 128,
-        "mnli-mm": 128,
-    }
+    "stsb": 128,
+    "mrpc": 128,
+    "rte": 128,
+    "sst2": 64,
+    "qqp": 128,
+    "qnli": 128,
+    "cola": 64,
+    "mnli": 128,
+    "mnli-m": 128,
+    "mnli-mm": 128,
+}
 
 
 TASKINFO = {

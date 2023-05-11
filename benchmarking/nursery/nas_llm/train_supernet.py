@@ -48,7 +48,12 @@ from transformers import (
     set_seed,
 )
 
-from sampling import FullSearchSpace, SmallSearchSpace, LayerSearchSpace, MediumSearchSpace
+from sampling import (
+    FullSearchSpace,
+    SmallSearchSpace,
+    LayerSearchSpace,
+    MediumSearchSpace,
+)
 from task_data import TASKINFO
 from masking import apply_neuron_mask
 from masking_gpt import apply_neuron_mask_gpt2
@@ -59,12 +64,12 @@ accelerator = Accelerator()
 
 
 def loss_KD_fn(
-        student_logits,
-        teacher_logits,
-        targets,
-        alpha=0.5,
-        temperature=1,
-        is_regression=False
+    student_logits,
+    teacher_logits,
+    targets,
+    alpha=0.5,
+    temperature=1,
+    is_regression=False,
 ):
     # alpha=0, ignore soft labels
     # alpha=1, ignore hard labels
@@ -76,9 +81,10 @@ def loss_KD_fn(
             kd_loss = F.mse_loss(student_logits, teacher_logits)
         else:
             kd_loss = F.cross_entropy(
-                student_logits / temperature, F.softmax(teacher_logits / temperature, dim=1)
+                student_logits / temperature,
+                F.softmax(teacher_logits / temperature, dim=1),
             )
-        loss += alpha * temperature ** 2 * kd_loss
+        loss += alpha * temperature**2 * kd_loss
     if alpha != 1:
         if is_regression:
             predictive_loss = F.mse_loss(student_logits, targets)
@@ -90,10 +96,10 @@ def loss_KD_fn(
 
 
 sampling = {
-    'small': SmallSearchSpace,
-    'medium': MediumSearchSpace,
-    'layer': LayerSearchSpace,
-    'uniform': FullSearchSpace,
+    "small": SmallSearchSpace,
+    "medium": MediumSearchSpace,
+    "layer": LayerSearchSpace,
+    "uniform": FullSearchSpace,
 }
 
 
@@ -128,7 +134,7 @@ def main():
         model_args,
         data_args,
         training_args,
-        nas_args
+        nas_args,
     ) = parser.parse_args_into_dataclasses()
 
     # Setup logging
@@ -148,7 +154,7 @@ def main():
     # Set seed before initializing model.
 
     if int(training_args.seed) == -1:
-        training_args.seed = np.random.randint(2 ** 32 - 1)
+        training_args.seed = np.random.randint(2**32 - 1)
     print(training_args.seed)
     set_seed(training_args.seed)
     torch.manual_seed(training_args.seed)
@@ -204,7 +210,7 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
-    if model_type.startswith('gpt2'):
+    if model_type.startswith("gpt2"):
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = model.config.eos_token_id
         # if tokenizer.pad_token is None:
@@ -224,8 +230,8 @@ def main():
     # Some models have set the order of the labels to use, so let's make sure we do use it.
     label_to_id = None
     if (
-            model.config.label2id != PretrainedConfig(num_labels=num_labels).label2id
-            and not is_regression
+        model.config.label2id != PretrainedConfig(num_labels=num_labels).label2id
+        and not is_regression
     ):
         # Some have all caps in their config, some don't.
         label_name_to_id = {k.lower(): v for k, v in model.config.label2id.items()}
@@ -357,27 +363,36 @@ def main():
     step = 0
     logger.info(f"Use {nas_args.sampling_strategy} to update super-network training")
 
-    metric_name = TASKINFO[data_args.task_name]['metric']
+    metric_name = TASKINFO[data_args.task_name]["metric"]
 
     kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
 
-    if model_type.startswith('gpt2'):
+    if model_type.startswith("gpt2"):
         neuron_mask = apply_neuron_mask_gpt2
-    elif model_type.startswith('bert'):
+    elif model_type.startswith("bert"):
         neuron_mask = apply_neuron_mask
 
     if nas_args.use_accelerate:
-        train_dataloader, eval_dataloader, test_dataloader, model, optimizer = accelerator.prepare(
-            train_dataloader, eval_dataloader, test_dataloader, model, optimizer)
+        (
+            train_dataloader,
+            eval_dataloader,
+            test_dataloader,
+            model,
+            optimizer,
+        ) = accelerator.prepare(
+            train_dataloader, eval_dataloader, test_dataloader, model, optimizer
+        )
 
-    sampler = sampling[nas_args.search_space](config, rng=np.random.RandomState(seed=training_args.seed))
+    sampler = sampling[nas_args.search_space](
+        config, rng=np.random.RandomState(seed=training_args.seed)
+    )
 
     for epoch in range(int(training_args.num_train_epochs)):
         model.train()
         train_loss = 0
         for batch in train_dataloader:
             if not nas_args.use_accelerate:
-               batch = {k: v.to(device) for k, v in batch.items()}
+                batch = {k: v.to(device) for k, v in batch.items()}
 
             if nas_args.sampling_strategy == "one_shot":
 
@@ -385,63 +400,82 @@ def main():
                 outputs = model(**batch)
                 loss = outputs.loss
                 y_teacher = outputs.logits.detach()
-                writer.add_scalar('loss largest sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss largest sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
                 # update smallest sub-network
                 head_mask, ffn_mask = sampler.get_smallest_sub_network()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
 
                 for handle in handles:
                     handle.remove()
                 # loss = loss_KD_fn(outputs.logits, y_teacher, batch['labels'], is_regression=is_regression)
-                loss = kl_loss(F.log_softmax(outputs.logits, dim=-1), F.log_softmax(y_teacher, dim=-1))
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
-                writer.add_scalar('loss smallest sub-network', loss, step)
+                loss = kl_loss(
+                    F.log_softmax(outputs.logits, dim=-1),
+                    F.log_softmax(y_teacher, dim=-1),
+                )
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss smallest sub-network", loss, step)
 
                 # update random sub-network
                 head_mask, ffn_mask = sampler()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
                 for handle in handles:
                     handle.remove()
                 # loss = loss_KD_fn(outputs.logits, y_teacher, batch['labels'], is_regression=is_regression)
-                loss = kl_loss(F.log_softmax(outputs.logits, dim=-1), F.log_softmax(y_teacher, dim=-1))
-                writer.add_scalar('loss random sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                loss = kl_loss(
+                    F.log_softmax(outputs.logits, dim=-1),
+                    F.log_softmax(y_teacher, dim=-1),
+                )
+                writer.add_scalar("loss random sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
                 # update random sub-network
                 head_mask, ffn_mask = sampler()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
 
                 for handle in handles:
                     handle.remove()
-                loss = kl_loss(F.log_softmax(outputs.logits, dim=-1), F.log_softmax(y_teacher, dim=-1))
-                writer.add_scalar('loss random sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                loss = kl_loss(
+                    F.log_softmax(outputs.logits, dim=-1),
+                    F.log_softmax(y_teacher, dim=-1),
+                )
+                writer.add_scalar("loss random sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             elif nas_args.sampling_strategy == "sandwich":
 
                 # update largest sub-network (i.e super-network)
                 outputs = model(**batch)
                 loss = outputs.loss
-                writer.add_scalar('loss largest sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss largest sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
                 # update smallest sub-network
                 head_mask, ffn_mask = sampler.get_smallest_sub_network()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
@@ -450,13 +484,15 @@ def main():
                     handle.remove()
 
                 loss = outputs.loss
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
-                writer.add_scalar('loss smallest sub-network', loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss smallest sub-network", loss, step)
 
                 # update random sub-network
                 head_mask, ffn_mask = sampler()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
@@ -465,13 +501,15 @@ def main():
                     handle.remove()
 
                 loss = outputs.loss
-                writer.add_scalar('loss random sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss random sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
                 # update random sub-network
                 head_mask, ffn_mask = sampler()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
@@ -479,13 +517,15 @@ def main():
                 for handle in handles:
                     handle.remove()
                 loss = outputs.loss
-                writer.add_scalar('loss random sub-network', loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("loss random sub-network", loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             elif nas_args.sampling_strategy == "random":
                 head_mask, ffn_mask = sampler()
-                head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                 handles = neuron_mask(model, ffn_mask)
                 outputs = model(head_mask=head_mask, **batch)
@@ -494,14 +534,16 @@ def main():
                     handle.remove()
 
                 loss = outputs.loss
-                writer.add_scalar('train-loss', outputs.loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("train-loss", outputs.loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             elif nas_args.sampling_strategy == "linear_random":
                 if np.random.rand() <= dropout_rate[step]:
                     head_mask, ffn_mask = sampler()
-                    head_mask = head_mask.to(device='cuda', dtype=model.dtype)
-                    ffn_mask = ffn_mask.to(device='cuda', dtype=model.dtype)
+                    head_mask = head_mask.to(device="cuda", dtype=model.dtype)
+                    ffn_mask = ffn_mask.to(device="cuda", dtype=model.dtype)
 
                     handles = neuron_mask(model, ffn_mask)
                     outputs = model(head_mask=head_mask, **batch)
@@ -511,20 +553,24 @@ def main():
                 else:
                     outputs = model(**batch)
                 loss = outputs.loss
-                writer.add_scalar('train-loss', outputs.loss, step)
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                writer.add_scalar("train-loss", outputs.loss, step)
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             elif nas_args.sampling_strategy == "meta":
 
                 config = sampler(data_args.task_name)[0]
-                num_layers = config['num_layers']
-                num_heads = config['num_heads']
-                num_units = config['num_units']
+                num_layers = config["num_layers"]
+                num_heads = config["num_heads"]
+                num_units = config["num_units"]
 
-                head_mask = torch.ones((model.config.num_hidden_layers,
-                                        model.config.num_attention_heads)).cuda()
-                ffn_mask = torch.ones((model.config.num_hidden_layers,
-                                       model.config.intermediate_size)).cuda()
+                head_mask = torch.ones(
+                    (model.config.num_hidden_layers, model.config.num_attention_heads)
+                ).cuda()
+                ffn_mask = torch.ones(
+                    (model.config.num_hidden_layers, model.config.intermediate_size)
+                ).cuda()
                 head_mask[num_layers:] = 0
                 head_mask[:num_layers, num_heads:] = 0
                 ffn_mask[num_layers:] = 0
@@ -537,15 +583,19 @@ def main():
                     handle.remove()
 
                 loss = outputs.loss
-                writer.add_scalar('train-loss', loss.item(), step)
+                writer.add_scalar("train-loss", loss.item(), step)
 
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             elif nas_args.sampling_strategy == "standard":
                 outputs = model(**batch)
-                writer.add_scalar('train-loss', outputs.loss, step)
+                writer.add_scalar("train-loss", outputs.loss, step)
                 loss = outputs.loss
-                accelerator.backward(loss) if nas_args.use_accelerate else loss.backward()
+                accelerator.backward(
+                    loss
+                ) if nas_args.use_accelerate else loss.backward()
 
             step += 1
 
@@ -554,7 +604,7 @@ def main():
             optimizer.zero_grad()
             progress_bar.update(1)
 
-            writer.add_scalar('lr', lr_scheduler.get_lr(), step)
+            writer.add_scalar("lr", lr_scheduler.get_lr(), step)
 
             train_loss += loss
 
@@ -567,7 +617,9 @@ def main():
 
             logits = outputs.logits
             # predictions = torch.argmax(logits, dim=-1)
-            predictions = torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            predictions = (
+                torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            )
 
             metric.add_batch(predictions=predictions, references=batch["labels"])
 
@@ -578,14 +630,14 @@ def main():
             f"evaluation metrics = {eval_metric}, "
             f"runtime = {runtime}"
         )
-        logger.info(f'epoch={epoch};')
-        logger.info(f'training loss={train_loss / len(train_dataloader)};')
-        logger.info(f'evaluation metrics={eval_metric[metric_name]};')
-        logger.info(f'runtime={runtime};')
+        logger.info(f"epoch={epoch};")
+        logger.info(f"training loss={train_loss / len(train_dataloader)};")
+        logger.info(f"evaluation metrics={eval_metric[metric_name]};")
+        logger.info(f"runtime={runtime};")
 
         for k, v in eval_metric.items():
-            writer.add_scalar(f'eval-{k}', v, epoch)
-        writer.add_scalar('runtime', runtime, epoch)
+            writer.add_scalar(f"eval-{k}", v, epoch)
+        writer.add_scalar("runtime", runtime, epoch)
 
         if training_args.save_strategy == "epoch":
             os.makedirs(training_args.output_dir, exist_ok=True)
@@ -597,7 +649,7 @@ def main():
                     training_args.output_dir,
                     is_main_process=accelerator.is_main_process,
                     save_function=accelerator.save,
-                    state_dict=accelerator.get_state_dict(model)
+                    state_dict=accelerator.get_state_dict(model),
                 )
             else:
                 torch.save(
@@ -615,7 +667,9 @@ def main():
 
             logits = outputs.logits
             # predictions = torch.argmax(logits, dim=-1)
-            predictions = torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            predictions = (
+                torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            )
 
             metric.add_batch(predictions=predictions, references=batch["labels"])
 
@@ -623,14 +677,16 @@ def main():
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
         results = {}
-        results['dataset'] = data_args.task_name
-        results['params'] = n_params
-        results['search_space'] = nas_args.search_space
+        results["dataset"] = data_args.task_name
+        results["params"] = n_params
+        results["search_space"] = nas_args.search_space
 
         results[metric_name] = float(eval_metric[metric_name])
-        results['test_' + metric_name] = float(test_metric[metric_name])
-        fname = os.path.join(training_args.output_dir, f'results_{data_args.task_name}.json')
-        json.dump(results, open(fname, 'w'))
+        results["test_" + metric_name] = float(test_metric[metric_name])
+        fname = os.path.join(
+            training_args.output_dir, f"results_{data_args.task_name}.json"
+        )
+        json.dump(results, open(fname, "w"))
 
 
 if __name__ == "__main__":

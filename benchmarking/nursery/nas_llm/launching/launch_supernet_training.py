@@ -23,17 +23,22 @@ from pathlib import Path
 model_type = "bert-base-cased"
 # model_type = 'gpt2'
 # model_type = 'gpt2-xl'
-datasets = ['cola']  # 'rte', 'mrpc', 'cola', 'stsb'
+datasets = ["cola"]  # 'rte', 'mrpc', 'cola', 'stsb'
 seeds = [0, 1, 2, 3, 4]
 num_epochs = 20
-search_space = 'small'  # small, medium, uniform, layer
-checkpoints = ['linear_random', 'sandwich', 'standard', 'random']  # ['linear_random', 'sandwich', 'one_shot', 'standard', 'random']
+search_space = "small"  # small, medium, uniform, layer
+checkpoints = [
+    "linear_random",
+    "sandwich",
+    "standard",
+    "random",
+]  # ['linear_random', 'sandwich', 'one_shot', 'standard', 'random']
 
 instance_type = "ml.g4dn.xlarge"
 accelerate = False
 entry_point = "train_supernet.py"
 
-if model_type in ['gpt2-xl']:
+if model_type in ["gpt2-xl"]:
     instance_type = "ml.g5.12xlarge"
     accelerate = True
     num_epochs = 10
@@ -67,16 +72,16 @@ for dataset in datasets:
                 "num_train_epochs": num_epochs,
                 "save_strategy": "epoch",
                 "sampling_strategy": checkpoint,
-                'learning_rate': 2e-05,
-                'per_device_train_batch_size': 4,
-                'per_device_eval_batch_size': 8,
+                "learning_rate": 2e-05,
+                "per_device_train_batch_size": 4,
+                "per_device_eval_batch_size": 8,
                 "seed": seed,
-                'fp16': True,
-                'search_space': search_space
+                "fp16": True,
+                "search_space": search_space,
             }
 
             if accelerate:
-                hyperparameters['use_accelerate'] = True
+                hyperparameters["use_accelerate"] = True
                 hyperparameters["training_script"] = "train_supernet.py"
                 hyperparameters["config_file"] = "default_config.yaml"
 
@@ -96,7 +101,6 @@ for dataset in datasets:
                 {"Name": "training loss", "Regex": "'training loss=(.*?);'"},
                 {"Name": "evaluation metrics", "Regex": "'training loss=(.*?);'"},
                 {"Name": "runtime", "Regex": "'runtime=(.*?);'"},
-
             ]
 
             LOG_DIR = "/opt/ml/output/tensorboard"
@@ -111,8 +115,7 @@ for dataset in datasets:
                 f"seed_{seed}/"
             )
             tensorboard_output_config = TensorBoardOutputConfig(
-                s3_output_path=output_path,
-                container_local_output_path=LOG_DIR
+                s3_output_path=output_path, container_local_output_path=LOG_DIR
             )
             sm_args["tensorboard_output_config"] = tensorboard_output_config
 

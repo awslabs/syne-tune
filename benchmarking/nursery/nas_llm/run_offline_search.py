@@ -15,6 +15,7 @@
 # limitations under the License.
 """ Finetuning the library models for sequence classification on GLUE."""
 import json
+
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 import os
 import time
@@ -56,7 +57,12 @@ from evaluate import load
 
 from estimate_efficency import compute_parameters
 from task_data import TASKINFO
-from sampling import SmallSearchSpace, MediumSearchSpace, LayerSearchSpace, FullSearchSpace
+from sampling import (
+    SmallSearchSpace,
+    MediumSearchSpace,
+    LayerSearchSpace,
+    FullSearchSpace,
+)
 from baselines import MethodArguments, methods
 from ask_tell_scheduler import AskTellScheduler
 from hf_args import DataTrainingArguments, ModelArguments
@@ -66,10 +72,10 @@ from load_glue_datasets import load_glue_datasets
 accelerator = accelerate.Accelerator()
 
 SEARCHSPACES = {
-    'small': SmallSearchSpace,
-    'medium': MediumSearchSpace,
-    'layer': LayerSearchSpace,
-    'uniform': FullSearchSpace,
+    "small": SmallSearchSpace,
+    "medium": MediumSearchSpace,
+    "layer": LayerSearchSpace,
+    "uniform": FullSearchSpace,
 }
 
 task_to_keys = {
@@ -93,12 +99,16 @@ class SearchArguments:
     Arguments to define the search
     """
 
-    if 'SM_CHANNEL_MODEL' in os.environ:
-        checkpoint_dir_model: str = field(metadata={"help": ""}, default=os.environ["SM_CHANNEL_MODEL"])
+    if "SM_CHANNEL_MODEL" in os.environ:
+        checkpoint_dir_model: str = field(
+            metadata={"help": ""}, default=os.environ["SM_CHANNEL_MODEL"]
+        )
     else:
-        checkpoint_dir_model: str = field(metadata={"help": ""}, default='/home/ubuntu/seed_42/')
+        checkpoint_dir_model: str = field(
+            metadata={"help": ""}, default="/home/ubuntu/seed_42/"
+        )
 
-    search_strategy: str = field(metadata={"help": ""}, default='random')
+    search_strategy: str = field(metadata={"help": ""}, default="random")
     search_space: str = field(metadata={"help": ""}, default="small")
     use_accelerate: bool = field(metadata={"help": ""}, default=False)
     num_samples: int = field(default=500)
@@ -114,7 +124,7 @@ def main():
         model_args,
         data_args,
         training_args,
-        search_args
+        search_args,
     ) = parser.parse_args_into_dataclasses()
 
     # Setup logging
@@ -125,7 +135,7 @@ def main():
     )
 
     # LOG_DIR = "/opt/ml/output/tensorboard"
-    LOG_DIR = './debug_log_tensorboard'
+    LOG_DIR = "./debug_log_tensorboard"
     writer = SummaryWriter(logdir=LOG_DIR)
 
     log_level = training_args.get_process_log_level()
@@ -138,7 +148,7 @@ def main():
     # Set seed before initializing model.
 
     if int(training_args.seed) == -1:
-        training_args.seed = np.random.randint(2 ** 32 - 1)
+        training_args.seed = np.random.randint(2**32 - 1)
     print(training_args.seed)
     set_seed(training_args.seed)
 
@@ -166,9 +176,11 @@ def main():
     else:
         num_labels = 1
 
-    metric = load('glue', data_args.task_name)
+    metric = load("glue", data_args.task_name)
 
-    _, eval_dataloader, test_dataloader = load_glue_datasets(training_args=training_args, model_args=model_args, data_args=data_args)
+    _, eval_dataloader, test_dataloader = load_glue_datasets(
+        training_args=training_args, model_args=model_args, data_args=data_args
+    )
 
     # Load tokenizer
     # tokenizer = AutoTokenizer.from_pretrained(
@@ -279,19 +291,25 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    if model_type.startswith('bert'):
+    if model_type.startswith("bert"):
         model = BertForSequenceClassification(teacher_config)
 
         attention_size = teacher_config.hidden_size
         num_attention_heads = teacher_config.num_attention_heads
         attention_head_size = int(attention_size / num_attention_heads)
 
-        n_params_emb = sum(p.numel() for p in model.bert.embeddings.parameters() if p.requires_grad)
-        n_params_pooler = sum(p.numel() for p in model.bert.pooler.parameters() if p.requires_grad)
-        n_params_classifier = sum(p.numel() for p in model.classifier.parameters() if p.requires_grad)
+        n_params_emb = sum(
+            p.numel() for p in model.bert.embeddings.parameters() if p.requires_grad
+        )
+        n_params_pooler = sum(
+            p.numel() for p in model.bert.pooler.parameters() if p.requires_grad
+        )
+        n_params_classifier = sum(
+            p.numel() for p in model.classifier.parameters() if p.requires_grad
+        )
         n_params_classifier += n_params_pooler
 
-    elif model_type.startswith('gpt2'):
+    elif model_type.startswith("gpt2"):
         model = GPT2ForSequenceClassification(teacher_config)
         model.config.pad_token_id = model.config.eos_token_id
 
@@ -299,10 +317,16 @@ def main():
         attention_size = teacher_config.hidden_size
         attention_head_size = int(attention_size / num_attention_heads)
 
-        wte = sum(p.numel() for p in model.transformer.wte.parameters() if p.requires_grad)
-        wpe = sum(p.numel() for p in model.transformer.wpe.parameters() if p.requires_grad)
+        wte = sum(
+            p.numel() for p in model.transformer.wte.parameters() if p.requires_grad
+        )
+        wpe = sum(
+            p.numel() for p in model.transformer.wpe.parameters() if p.requires_grad
+        )
         n_params_emb = wte + wpe
-        n_params_classifier = sum(p.numel() for p in model.score.parameters() if p.requires_grad)
+        n_params_classifier = sum(
+            p.numel() for p in model.score.parameters() if p.requires_grad
+        )
 
     if search_args.use_accelerate:
         model = accelerator.prepare(model)
@@ -311,7 +335,7 @@ def main():
         model.load_state_dict(
             torch.load(
                 os.path.join(search_args.checkpoint_dir_model, "checkpoint.pt"),
-                map_location='cuda:0'
+                map_location="cuda:0",
             ),
         )
     model_loading_time = time.time() - st
@@ -319,18 +343,21 @@ def main():
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(device)
 
-    metric_name = TASKINFO[data_args.task_name]['metric']
+    metric_name = TASKINFO[data_args.task_name]["metric"]
 
-    if model_type.startswith('gpt2'):
+    if model_type.startswith("gpt2"):
         neuron_mask = apply_neuron_mask_gpt2
-    elif model_type.startswith('bert'):
+    elif model_type.startswith("bert"):
         neuron_mask = apply_neuron_mask
 
     def evaluate_masks(head_mask, ffn_mask, dataloader):
 
-        n_params_model = compute_parameters(dmodel=attention_size, dhead=attention_head_size,
-                                          num_heads_per_layer=head_mask.sum(dim=1),
-                                          num_neurons_per_layer=ffn_mask.sum(dim=1))
+        n_params_model = compute_parameters(
+            dmodel=attention_size,
+            dhead=attention_head_size,
+            num_heads_per_layer=head_mask.sum(dim=1),
+            num_neurons_per_layer=ffn_mask.sum(dim=1),
+        )
         n_params = n_params_emb + n_params_model + n_params_classifier
 
         handles = neuron_mask(model, ffn_mask)
@@ -342,7 +369,9 @@ def main():
                 outputs = model(head_mask=head_mask, **batch)
 
             logits = outputs.logits
-            predictions = torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            predictions = (
+                torch.squeeze(logits) if is_regression else torch.argmax(logits, dim=-1)
+            )
 
             metric.add_batch(predictions=predictions, references=batch["labels"])
 
@@ -355,17 +384,15 @@ def main():
     search_space = SEARCHSPACES[search_args.search_space](model.config)
 
     base_scheduler = methods[search_args.search_strategy](
-            MethodArguments(
-                config_space=search_space.get_syne_tune_config_space(),
-                metrics=['error', 'params'],
-                mode=['min', 'min'],
-                random_seed=training_args.seed,
-            )
+        MethodArguments(
+            config_space=search_space.get_syne_tune_config_space(),
+            metrics=["error", "params"],
+            mode=["min", "min"],
+            random_seed=training_args.seed,
         )
-
-    scheduler = AskTellScheduler(
-        base_scheduler=base_scheduler
     )
+
+    scheduler = AskTellScheduler(base_scheduler=base_scheduler)
 
     costs = np.empty((search_args.num_samples, 2))
     masks = []
@@ -377,20 +404,20 @@ def main():
         head_mask = head_mask.to(device)
         ffn_mask = ffn_mask.to(device)
         error, params = evaluate_masks(head_mask, ffn_mask, eval_dataloader)
-        scheduler.tell(trial_suggestion, {'error': error, "params": params})
+        scheduler.tell(trial_suggestion, {"error": error, "params": params})
         costs[i][0] = error
         costs[i][1] = params
         masks.append((head_mask, ffn_mask))
         configs.append(trial_suggestion.config)
         print(trial_suggestion.config)
-        print(f'iteration={i};')
-        print(f'error={error};')
-        print(f'params={params};')
-        writer.add_scalar('error', float(error), i)
-        writer.add_scalar('params', int(params), i)
+        print(f"iteration={i};")
+        print(f"error={error};")
+        print(f"params={params};")
+        writer.add_scalar("error", float(error), i)
+        writer.add_scalar("params", int(params), i)
 
         runtime.append(time.time() - start_time)
-        writer.add_scalar('runtime', runtime[-1], i)
+        writer.add_scalar("runtime", runtime[-1], i)
         logger.info(f"runtime = {runtime[-1]}")
 
     idx = get_pareto_optimal(costs)
@@ -399,28 +426,37 @@ def main():
 
     test_pareto = []
     for i, (head_mask, ffn_mask) in enumerate(masks):
-        error, n_params = evaluate_masks(head_mask, ffn_mask, dataloader=test_dataloader)
+        error, n_params = evaluate_masks(
+            head_mask, ffn_mask, dataloader=test_dataloader
+        )
         test_pareto.append(error)
 
-        torch.save(head_mask.cpu(), os.path.join(training_args.output_dir, f"head_mask_{i}.pt"))
-        torch.save(ffn_mask.cpu(), os.path.join(training_args.output_dir, f"neuron_mask_{i}.pt"))
+        torch.save(
+            head_mask.cpu(), os.path.join(training_args.output_dir, f"head_mask_{i}.pt")
+        )
+        torch.save(
+            ffn_mask.cpu(),
+            os.path.join(training_args.output_dir, f"neuron_mask_{i}.pt"),
+        )
 
     results = {}
-    results['dataset'] = data_args.task_name
+    results["dataset"] = data_args.task_name
     # results['test_' + metric_name] = float(test_metric[metric_name])
     results[metric_name] = list(costs[:, 0])
-    results['params'] = list(costs[:, 1])
-    results['test_pareto'] = test_pareto
-    results['config'] = configs
-    results['eval_pareto'] = list(costs[idx, 0])
-    results['params_pareto'] = list(costs[idx, 1])
-    results['model_loading_time'] = model_loading_time
-    results['data_loading_time'] = data_loading_time
-    results['runtime'] = runtime
+    results["params"] = list(costs[:, 1])
+    results["test_pareto"] = test_pareto
+    results["config"] = configs
+    results["eval_pareto"] = list(costs[idx, 0])
+    results["params_pareto"] = list(costs[idx, 1])
+    results["model_loading_time"] = model_loading_time
+    results["data_loading_time"] = data_loading_time
+    results["runtime"] = runtime
 
     print(results)
-    fname = os.path.join(training_args.output_dir, f'results_{data_args.task_name}.json')
-    json.dump(results, open(fname, 'w'))
+    fname = os.path.join(
+        training_args.output_dir, f"results_{data_args.task_name}.json"
+    )
+    json.dump(results, open(fname, "w"))
 
 
 if __name__ == "__main__":
