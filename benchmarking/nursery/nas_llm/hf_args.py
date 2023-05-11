@@ -1,17 +1,17 @@
-# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License").
-# You may not use this file except in compliance with the License.
-# A copy of the License is located at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# or in the "license" file accompanying this file. This file is distributed
-# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
-# express or implied. See the License for the specific language governing
-# permissions and limitations under the License.
 from dataclasses import dataclass, field
 from typing import Optional
+
+
+def parse_model_name(model_args):
+    if model_args.model_name_or_path in ["bert-small", "bert-medium", "bert-tiny"]:
+        model_type = "prajjwal1/" + model_args.model_name_or_path
+    elif model_args.model_name_or_path in ["electra-base"]:
+        model_type = "google/electra-base-discriminator"
+    elif model_args.model_name_or_path in ["electra-small"]:
+        model_type = "google/electra-small-discriminator"
+    else:
+        model_type = model_args.model_name_or_path
+    return model_type
 
 
 @dataclass
@@ -32,7 +32,7 @@ class DataTrainingArguments:
         default=128,
         metadata={
             "help": "The maximum total input sequence length after tokenization. Sequences longer "
-            "than this will be truncated, sequences shorter will be padded."
+                    "than this will be truncated, sequences shorter will be padded."
         },
     )
     overwrite_cache: bool = field(
@@ -43,7 +43,7 @@ class DataTrainingArguments:
         default=True,
         metadata={
             "help": "Whether to pad all samples to `max_seq_length`. "
-            "If False, will pad the samples dynamically when batching to the maximum length in the batch."
+                    "If False, will pad the samples dynamically when batching to the maximum length in the batch."
         },
     )
 
@@ -81,6 +81,6 @@ class ModelArguments:
         default=False,
         metadata={
             "help": "Will use the token generated when running `transformers-cli login` (necessary to use this script "
-            "with private models)."
+                    "with private models)."
         },
     )
