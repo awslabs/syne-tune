@@ -1,0 +1,26 @@
+tqdm
+coolname
+numpy
+pandas
+fastparquet
+s3fs
+sklearn
+h5py # note: only needed for fcnet
+botorch
+xgboost
+gpy
+#transformers==4.21.2
+transformers
+datasets
+torch==1.10.0
+autograd
+cupy-cuda11x  # for pruning
+regex
+tokenizers
+tensorboardx
+optuna
+evaluate
+deepspeed>=0.8.2
+syne_tune
+accelerate
+pymoo
