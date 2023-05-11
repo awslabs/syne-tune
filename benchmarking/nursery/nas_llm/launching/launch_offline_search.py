@@ -22,24 +22,17 @@ from syne_tune.util import random_string
 
 from pathlib import Path
 
-# model_type = "gpt2-xl"
-model_type = "bert-base-cased"
-# model_type = 'gpt2'
 
-# datasets = ['rte', 'mrpc', 'cola', "stsb"]
-datasets = ["cola"]
-seeds = [0, 1, 2, 3, 4]
+model_type = "bert-base-cased"
+dataset = "rte"
+seed = 0
 num_epochs = 20
-# search_strategy = 'modified_random_search'
-# search_strategy = 'local_search'
-search_strategy = "random_search"
-# checkpoints = ['linear_random', 'sandwich', 'one_shot', 'standard', 'random']
-checkpoints = ["linear_random", "sandwich", "standard", "random"]
-search_space = "small"  # small, medium, uniform, layer
-runs = [0, 1, 2, 3, 4]
+search_strategy = "local_search"
+checkpoint = "one_shot"
+search_space = "small"
+run = 0
 
 use_accelerate = False
-
 
 entry_point = "run_offline_search.py"
 instance_type = "ml.g4dn.xlarge"
@@ -68,72 +61,67 @@ sm_args = dict(
     checkpoint_local_path="/opt/ml/checkpoints",
 )
 
-for dataset in datasets:
-    for checkpoint in checkpoints:
+hyperparameters = {
+    "model_name_or_path": model_type,
+    "output_dir": sm_args["checkpoint_local_path"],
+    "task_name": dataset,
+    "search_strategy": search_strategy,
+    "seed": seed + 10 * run,
+    "search_space": search_space,
+    "num_samples": num_samples,
+}
+if use_accelerate:
+    hyperparameters["use_accelerate"] = True
 
-        for seed in seeds:
-            for run in runs:
-                hyperparameters = {
-                    "model_name_or_path": model_type,
-                    "output_dir": sm_args["checkpoint_local_path"],
-                    "task_name": dataset,
-                    "search_strategy": search_strategy,
-                    "seed": seed + 10 * run,
-                    "search_space": search_space,
-                    "num_samples": num_samples,
-                }
-                if use_accelerate:
-                    hyperparameters["use_accelerate"] = True
+sm_args["hyperparameters"] = hyperparameters
 
-                sm_args["hyperparameters"] = hyperparameters
+model_uri = (
+    f"s3://sagemaker-us-west-2-770209394645/checkpoints_nas/"
+    f"{search_space}/"
+    f"{model_type}"
+    f"/epochs_{num_epochs}/"
+    f"{dataset}/"
+    f"{checkpoint}/"
+    f"seed_{seed}/"
+)
+sm_args["metric_definitions"] = [
+    {"Name": "iteration", "Regex": "'iteration=(.*?);'"},
+    {"Name": "error", "Regex": "'error=(.*?);'"},
+    {"Name": "params", "Regex": "'params=(.*?);'"},
+]
 
-                model_uri = (
-                    f"s3://sagemaker-us-west-2-770209394645/checkpoints_nas/"
-                    f"{search_space}/"
-                    f"{model_type}"
-                    f"/epochs_{num_epochs}/"
-                    f"{dataset}/"
-                    f"{checkpoint}/"
-                    f"seed_{seed}/"
-                )
-                sm_args["metric_definitions"] = [
-                    {"Name": "iteration", "Regex": "'iteration=(.*?);'"},
-                    {"Name": "error", "Regex": "'error=(.*?);'"},
-                    {"Name": "params", "Regex": "'params=(.*?);'"},
-                ]
+sm_args["model_uri"] = model_uri
 
-                sm_args["model_uri"] = model_uri
+checkpoint_s3_uri = (
+    f"s3://sagemaker-us-west-2-770209394645/weight_sharing_nas/{search_space}/{model_type}/epochs_{num_epochs}/"
+    f"{dataset}/{checkpoint}/seed_{seed}/{search_strategy}/run_{run}/"
+)
+sm_args["checkpoint_s3_uri"] = checkpoint_s3_uri
 
-                checkpoint_s3_uri = (
-                    f"s3://sagemaker-us-west-2-770209394645/weight_sharing_nas/{search_space}/{model_type}/epochs_{num_epochs}/"
-                    f"{dataset}/{checkpoint}/seed_{seed}/{search_strategy}/run_{run}/"
-                )
-                sm_args["checkpoint_s3_uri"] = checkpoint_s3_uri
+LOG_DIR = "/opt/ml/output/tensorboard"
 
-                LOG_DIR = "/opt/ml/output/tensorboard"
+output_path = (
+    f"s3://sagemaker-us-west-2-770209394645/tensorboard_search/"
+    f"{search_space}/"
+    f"{model_type}"
+    f"/epochs_{num_epochs}/"
+    f"{dataset}/"
+    f"{checkpoint}/"
+    f"seed_{seed}/"
+)
 
-                output_path = (
-                    f"s3://sagemaker-us-west-2-770209394645/tensorboard_search/"
-                    f"{search_space}/"
-                    f"{model_type}"
-                    f"/epochs_{num_epochs}/"
-                    f"{dataset}/"
-                    f"{checkpoint}/"
-                    f"seed_{seed}/"
-                )
+tensorboard_output_config = TensorBoardOutputConfig(
+    s3_output_path=output_path, container_local_output_path=LOG_DIR
+)
+sm_args["tensorboard_output_config"] = tensorboard_output_config
+est = PyTorch(**sm_args)
+hash = random_string(4)
 
-                tensorboard_output_config = TensorBoardOutputConfig(
-                    s3_output_path=output_path, container_local_output_path=LOG_DIR
-                )
-                sm_args["tensorboard_output_config"] = tensorboard_output_config
-                est = PyTorch(**sm_args)
-                hash = random_string(4)
-
-                checkpoint_name = checkpoint.replace("_", "-")
-                search_strategy_name = search_strategy.replace("_", "-")
-                jn = f"search-{dataset}-{checkpoint_name}-{search_strategy_name}-{seed}-{run}-{hash}"
-                print(f"Start job {jn}")
-                est.fit(
-                    job_name=jn,
-                    wait=False,
-                )
+checkpoint_name = checkpoint.replace("_", "-")
+search_strategy_name = search_strategy.replace("_", "-")
+jn = f"search-{dataset}-{checkpoint_name}-{search_strategy_name}-{seed}-{run}-{hash}"
+print(f"Start job {jn}")
+est.fit(
+    job_name=jn,
+    wait=False,
+)

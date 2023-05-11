@@ -20,20 +20,13 @@ from syne_tune.util import random_string
 
 from pathlib import Path
 
-model_type = "bert-base-cased"
-# model_type = 'gpt2'
-# model_type = 'gpt2-xl'
-datasets = ["cola"]  # 'rte', 'mrpc', 'cola', 'stsb'
-seeds = [0, 1, 2, 3, 4]
-num_epochs = 20
-search_space = "small"  # small, medium, uniform, layer
-checkpoints = [
-    "linear_random",
-    "sandwich",
-    "standard",
-    "random",
-]  # ['linear_random', 'sandwich', 'one_shot', 'standard', 'random']
 
+model_type = "bert-base-cased"
+dataset = "rte"
+seed = 0
+num_epochs = 20
+search_space = "small"
+checkpoint = "one_shot"
 instance_type = "ml.g4dn.xlarge"
 accelerate = False
 entry_point = "train_supernet.py"
@@ -61,70 +54,66 @@ sm_args = dict(
     checkpoint_local_path="/opt/ml/checkpoints",
 )
 
-for dataset in datasets:
-    for checkpoint in checkpoints:
+hyperparameters = {
+    "model_name_or_path": model_type,
+    "output_dir": sm_args["checkpoint_local_path"],
+    "task_name": dataset,
+    "num_train_epochs": num_epochs,
+    "save_strategy": "epoch",
+    "sampling_strategy": checkpoint,
+    "learning_rate": 2e-05,
+    "per_device_train_batch_size": 4,
+    "per_device_eval_batch_size": 8,
+    "seed": seed,
+    "fp16": True,
+    "search_space": search_space,
+}
 
-        for seed in seeds:
-            hyperparameters = {
-                "model_name_or_path": model_type,
-                "output_dir": sm_args["checkpoint_local_path"],
-                "task_name": dataset,
-                "num_train_epochs": num_epochs,
-                "save_strategy": "epoch",
-                "sampling_strategy": checkpoint,
-                "learning_rate": 2e-05,
-                "per_device_train_batch_size": 4,
-                "per_device_eval_batch_size": 8,
-                "seed": seed,
-                "fp16": True,
-                "search_space": search_space,
-            }
+if accelerate:
+    hyperparameters["use_accelerate"] = True
+    hyperparameters["training_script"] = "train_supernet.py"
+    hyperparameters["config_file"] = "default_config.yaml"
 
-            if accelerate:
-                hyperparameters["use_accelerate"] = True
-                hyperparameters["training_script"] = "train_supernet.py"
-                hyperparameters["config_file"] = "default_config.yaml"
+sm_args["hyperparameters"] = hyperparameters
+sm_args["checkpoint_s3_uri"] = (
+    f"s3://sagemaker-us-west-2-770209394645/checkpoints_nas/"
+    f"{search_space}/"
+    f"{model_type}"
+    f"/epochs_{num_epochs}/"
+    f"{dataset}/"
+    f"{checkpoint}/"
+    f"seed_{seed}/"
+)
 
-            sm_args["hyperparameters"] = hyperparameters
-            sm_args["checkpoint_s3_uri"] = (
-                f"s3://sagemaker-us-west-2-770209394645/checkpoints_nas/"
-                f"{search_space}/"
-                f"{model_type}"
-                f"/epochs_{num_epochs}/"
-                f"{dataset}/"
-                f"{checkpoint}/"
-                f"seed_{seed}/"
-            )
+sm_args["metric_definitions"] = [
+    {"Name": "epoch", "Regex": "'epoch=(.*?);'"},
+    {"Name": "training loss", "Regex": "'training loss=(.*?);'"},
+    {"Name": "evaluation metrics", "Regex": "'training loss=(.*?);'"},
+    {"Name": "runtime", "Regex": "'runtime=(.*?);'"},
+]
 
-            sm_args["metric_definitions"] = [
-                {"Name": "epoch", "Regex": "'epoch=(.*?);'"},
-                {"Name": "training loss", "Regex": "'training loss=(.*?);'"},
-                {"Name": "evaluation metrics", "Regex": "'training loss=(.*?);'"},
-                {"Name": "runtime", "Regex": "'runtime=(.*?);'"},
-            ]
+LOG_DIR = "/opt/ml/output/tensorboard"
 
-            LOG_DIR = "/opt/ml/output/tensorboard"
+output_path = (
+    f"s3://sagemaker-us-west-2-770209394645/tensorboard/"
+    f"{search_space}/"
+    f"{model_type}"
+    f"/epochs_{num_epochs}/"
+    f"{dataset}/"
+    f"{checkpoint}/"
+    f"seed_{seed}/"
+)
+tensorboard_output_config = TensorBoardOutputConfig(
+    s3_output_path=output_path, container_local_output_path=LOG_DIR
+)
+sm_args["tensorboard_output_config"] = tensorboard_output_config
 
-            output_path = (
-                f"s3://sagemaker-us-west-2-770209394645/tensorboard/"
-                f"{search_space}/"
-                f"{model_type}"
-                f"/epochs_{num_epochs}/"
-                f"{dataset}/"
-                f"{checkpoint}/"
-                f"seed_{seed}/"
-            )
-            tensorboard_output_config = TensorBoardOutputConfig(
-                s3_output_path=output_path, container_local_output_path=LOG_DIR
-            )
-            sm_args["tensorboard_output_config"] = tensorboard_output_config
+est = PyTorch(**sm_args)
+hash = random_string(4)
 
-            est = PyTorch(**sm_args)
-            hash = random_string(4)
-
-            job_name = f"{model_type}-{search_space}-{dataset}-{checkpoint.replace('_', '-')}-{seed}-{hash}"
-            print(f"Start job {job_name}")
-            est.fit(
-                job_name=job_name,
-                wait=False,
-            )
+job_name = f"{model_type}-{search_space}-{dataset}-{checkpoint.replace('_', '-')}-{seed}-{hash}"
+print(f"Start job {job_name}")
+est.fit(
+    job_name=job_name,
+    wait=False,
+)
