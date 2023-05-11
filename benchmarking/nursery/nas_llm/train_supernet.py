@@ -123,6 +123,7 @@ class NASArguments:
     search_space: str = field(metadata={"help": ""}, default="small")
     use_accelerate: bool = field(metadata={"help": ""}, default=False)
     sampling_strategy: str = field(metadata={"help": ""}, default=None)
+    log_dir: str = field(metadata={"help": ""}, default="./tensorboard_log_dir")
 
 
 def main():
@@ -337,10 +338,7 @@ def main():
     from transformers import get_scheduler
     from torch.optim import AdamW
 
-    LOG_DIR = "/opt/ml/output/tensorboard"
-    writer = SummaryWriter(logdir=LOG_DIR)
-    # writer = SummaryWriter(logdir=training_args.output_dir,
-    #                        comment=f"{data_args.task_name}_{model_type}_{nas_args.sampling_strategy}")
+    writer = SummaryWriter(logdir=nas_args.log_dir)
 
     optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
 

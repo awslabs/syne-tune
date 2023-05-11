@@ -112,6 +112,7 @@ class SearchArguments:
     search_space: str = field(metadata={"help": ""}, default="small")
     use_accelerate: bool = field(metadata={"help": ""}, default=False)
     num_samples: int = field(default=500)
+    log_dir: str = field(metadata={"help": ""}, default="./tensorboard_log_dir")
 
 
 def main():
@@ -134,9 +135,7 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    # LOG_DIR = "/opt/ml/output/tensorboard"
-    LOG_DIR = "./debug_log_tensorboard"
-    writer = SummaryWriter(logdir=LOG_DIR)
+    writer = SummaryWriter(logdir=nas_args.log_dir)
 
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
