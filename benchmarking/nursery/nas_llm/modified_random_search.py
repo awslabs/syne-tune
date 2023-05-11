@@ -67,9 +67,7 @@ class MORS(FIFOScheduler):
 
 
 class ModifiedRandomSearch(StochasticSearcher):
-    """
-
-    """
+    """ """
 
     def __init__(
         self,
@@ -77,7 +75,6 @@ class ModifiedRandomSearch(StochasticSearcher):
         metric: str,
         points_to_evaluate: Optional[List[dict]] = None,
         mode: str = "min",
-
         **kwargs,
     ):
         super(ModifiedRandomSearch, self).__init__(
@@ -89,22 +86,24 @@ class ModifiedRandomSearch(StochasticSearcher):
 
     def get_config(self, **kwargs) -> Optional[dict]:
         hp = list(self.config_space.keys())[0]
-        if hp.startswith('layer_'):
+        if hp.startswith("layer_"):
             num_layers = 0
             for hp in self.config_space:
-                if hp.startswith('layer_mha_'):
+                if hp.startswith("layer_mha_"):
                     num_layers += 1
             n_layers = self.random_state.randint(0, num_layers * 2)
-            layers = self.random_state.choice(np.arange(num_layers * 2), n_layers, replace=False)
+            layers = self.random_state.choice(
+                np.arange(num_layers * 2), n_layers, replace=False
+            )
             config = {}
             for hp in self.config_space:
                 config[hp] = 0
 
             for li in layers:
                 if li < num_layers:
-                    config[f'layer_mha_{li}'] = 1
+                    config[f"layer_mha_{li}"] = 1
                 else:
-                    config[f'layer_ffn_{li - num_layers}'] = 1
+                    config[f"layer_ffn_{li - num_layers}"] = 1
 
         else:
             config = self._sample_random_config()
@@ -135,8 +134,10 @@ if __name__ == "__main__":
 
     from nas_fine_tuning.sampling import LayerSearchSpace
 
-    config = AutoConfig.from_pretrained('bert-base-cased')
+    config = AutoConfig.from_pretrained("bert-base-cased")
     ss = LayerSearchSpace(config)
 
-    rs = ModifiedRandomSearch(ss.get_syne_tune_config_space(), metric=['a', 'b'], random_seed=412)
+    rs = ModifiedRandomSearch(
+        ss.get_syne_tune_config_space(), metric=["a", "b"], random_seed=412
+    )
     print(rs.get_config())

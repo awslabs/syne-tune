@@ -14,11 +14,7 @@ from dataclasses import dataclass
 from typing import Dict
 
 from syne_tune.config_space import Domain, Categorical
-from syne_tune.optimizer.baselines import (
-    RandomSearch,
-    MOREA,
-    NSGA2
-)
+from syne_tune.optimizer.baselines import RandomSearch, MOREA, NSGA2
 from modified_random_search import MORS
 from local_search import LS
 
@@ -34,6 +30,7 @@ def get_default(config_space):
                 config[k] = v.upper
     return config
 
+
 @dataclass
 class MethodArguments:
     config_space: Dict
@@ -47,9 +44,9 @@ class MethodArguments:
 class Methods:
     RS = "random_search"
     MOREA = "morea"
-    MORS = 'modified_random_search'
-    LS = 'local_search'
-    NSGA2 = 'nsga2'
+    MORS = "modified_random_search"
+    LS = "local_search"
+    NSGA2 = "nsga2"
 
 
 methods = {
@@ -60,7 +57,6 @@ methods = {
         random_seed=method_arguments.random_seed,
         # points_to_evaluate=[get_default(config_space=method_arguments.config_space)],
     ),
-
     Methods.MOREA: lambda method_arguments: MOREA(
         config_space=method_arguments.config_space,
         metric=method_arguments.metrics,
@@ -70,7 +66,6 @@ methods = {
         population_size=10,
         # points_to_evaluate=[get_default(config_space=method_arguments.config_space)],
     ),
-
     Methods.MORS: lambda method_arguments: MORS(
         config_space=method_arguments.config_space,
         metric=method_arguments.metrics,
@@ -93,5 +88,4 @@ methods = {
         population_size=10,
         # points_to_evaluate=[get_default(config_space=method_arguments.config_space)],
     ),
-
 }

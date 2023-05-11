@@ -59,13 +59,13 @@ class LS(FIFOScheduler):
     """
 
     def __init__(
-            self,
-            config_space: Dict[str, Any],
-            metric: List[str],
-            mode: Union[List[str], str] = "min",
-            start_point: Dict[str, Any] = None,
-            random_seed: Optional[int] = None,
-            **kwargs,
+        self,
+        config_space: Dict[str, Any],
+        metric: List[str],
+        mode: Union[List[str], str] = "min",
+        start_point: Dict[str, Any] = None,
+        random_seed: Optional[int] = None,
+        **kwargs,
     ):
         super(LS, self).__init__(
             config_space=config_space,
@@ -84,23 +84,22 @@ class LS(FIFOScheduler):
 
 
 class LocalSearch(StochasticSearcher):
-    """
-
-    """
+    """ """
 
     def __init__(
-            self,
-            config_space,
-            metric: str,
-            points_to_evaluate: Optional[List[dict]] = None,
-            start_point: Dict = None,
-            mode: str = "min",
-
-            **kwargs,
+        self,
+        config_space,
+        metric: str,
+        points_to_evaluate: Optional[List[dict]] = None,
+        start_point: Dict = None,
+        mode: str = "min",
+        **kwargs,
     ):
         if start_point is None:
-            self.start_point =  {k: v.sample() if isinstance(v, Domain) else v
-            for k, v in config_space.items()}
+            self.start_point = {
+                k: v.sample() if isinstance(v, Domain) else v
+                for k, v in config_space.items()
+            }
         else:
             self.start_point = start_point
 
@@ -112,7 +111,11 @@ class LocalSearch(StochasticSearcher):
             points_to_evaluate.append(self.start_point)
 
         super(LocalSearch, self).__init__(
-            config_space, metric, mode=mode, points_to_evaluate=points_to_evaluate, **kwargs
+            config_space,
+            metric,
+            mode=mode,
+            points_to_evaluate=points_to_evaluate,
+            **kwargs,
         )
         if isinstance(self._mode, List):
             self._metric_op = {
@@ -156,7 +159,7 @@ class LocalSearch(StochasticSearcher):
         is_efficient = np.ones(costs.shape[0], dtype=bool)
         for i, c in enumerate(costs):
             is_efficient[i] = np.all(np.any(costs[:i] > c, axis=1)) and np.all(
-                np.any(costs[i + 1:] > c, axis=1)
+                np.any(costs[i + 1 :] > c, axis=1)
             )
 
         return is_efficient
@@ -173,9 +176,7 @@ class LocalSearch(StochasticSearcher):
             config = self._sample_random_neighbour(self.start_point)
         else:
             # we sample a random neighbour of one of the elements in the Pareto front
-            element = self.random_state.choice(
-                self._pareto_front
-            )
+            element = self.random_state.choice(self._pareto_front)
             config = self._sample_random_neighbour(element.config)
 
         return config
@@ -199,7 +200,9 @@ class LocalSearch(StochasticSearcher):
 
         pareto_front = deepcopy(self._pareto_front)
         pareto_front.append(element)
-        costs = np.array([[v for v in element.result.values()] for element in pareto_front])
+        costs = np.array(
+            [[v for v in element.result.values()] for element in pareto_front]
+        )
 
         # check for Pareto efficiency
         is_efficient = self.is_efficient(costs)
@@ -232,14 +235,18 @@ if __name__ == "__main__":
     from syne_tune.tuner import Trial
     from syne_tune.config_space import Categorical
 
-    config = AutoConfig.from_pretrained('bert-base-cased')
+    config = AutoConfig.from_pretrained("bert-base-cased")
     ss = SmallSearchSpace(config)
 
-    start_point = {'num_layers': 12, 'num_heads': 12, 'num_units': 3072}
+    start_point = {"num_layers": 12, "num_heads": 12, "num_units": 3072}
 
-    ls = LS(ss.get_syne_tune_config_space(), start_point=start_point, metric=['a', 'b'], random_seed=412,
-            mode=['min', 'min'])
-
+    ls = LS(
+        ss.get_syne_tune_config_space(),
+        start_point=start_point,
+        metric=["a", "b"],
+        random_seed=412,
+        mode=["min", "min"],
+    )
 
     def get_default(config_space):
         config = {}
@@ -258,6 +265,7 @@ if __name__ == "__main__":
         trial = ls.suggest(trial_id=i)
         print(trial)
         # ls._update(trial_id=i, config=config, result={'a': np.random.rand(), 'b':np.random.rand()})
-        result = {'a': np.random.rand(), 'b':np.random.rand()}
-        ls.on_trial_result(Trial(trial_id=i, config=trial.config, creation_time=None), result=result)
-
+        result = {"a": np.random.rand(), "b": np.random.rand()}
+        ls.on_trial_result(
+            Trial(trial_id=i, config=trial.config, creation_time=None), result=result
+        )
