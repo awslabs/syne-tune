@@ -135,7 +135,7 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    writer = SummaryWriter(logdir=nas_args.log_dir)
+    writer = SummaryWriter(logdir=search_args.log_dir)
 
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
