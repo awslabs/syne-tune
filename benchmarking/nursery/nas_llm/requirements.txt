@@ -10,3 +10,4 @@ tensorboardx
 evaluate
 deepspeed>=0.8.2
 accelerate
+syne_tune[extra]
