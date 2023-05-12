@@ -324,6 +324,7 @@ def main():
     indices = np.arange(costs.shape[0])[idx]
     masks = [masks[i] for i in indices]
 
+    os.makedirs(training_args.output_dir, exist_ok=True)
     test_pareto = []
     for i, (head_mask, ffn_mask) in enumerate(masks):
         error, n_params = evaluate_masks(
@@ -351,7 +352,6 @@ def main():
     results["data_loading_time"] = data_loading_time
     results["runtime"] = runtime
 
-    os.makedirs(training_args.output_dir, exist_ok=True)
     fname = os.path.join(
         training_args.output_dir, f"results_{data_args.task_name}.json"
     )
