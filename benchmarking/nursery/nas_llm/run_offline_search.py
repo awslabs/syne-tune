@@ -151,7 +151,6 @@ def main():
     print(training_args.seed)
     set_seed(training_args.seed)
 
-    # model_type = model_args.model_name_or_path
     if model_args.model_name_or_path in ["bert-small", "bert-medium", "bert-tiny"]:
         model_type = "prajjwal1/" + model_args.model_name_or_path
     elif model_args.model_name_or_path in ["electra-base"]:
@@ -180,104 +179,6 @@ def main():
     _, eval_dataloader, test_dataloader = load_glue_datasets(
         training_args=training_args, model_args=model_args, data_args=data_args
     )
-
-    # Load tokenizer
-    # tokenizer = AutoTokenizer.from_pretrained(
-    #     model_type,
-    #     cache_dir=model_args.cache_dir,
-    #     use_fast=model_args.use_fast_tokenizer,
-    #     revision=model_args.model_revision,
-    #     use_auth_token=True if model_args.use_auth_token else None,
-    # )
-    #
-    # if model_type.startswith('gpt2'):
-    #     tokenizer.pad_token = tokenizer.eos_token
-    #
-    # # Preprocessing the raw_datasets
-    # sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
-    #
-    # # Padding strategy
-    # if data_args.pad_to_max_length:
-    #     padding = "max_length"
-    # else:
-    #     # We will pad later, dynamically at batch creation, to the max sequence length in each batch
-    #     padding = False
-    #
-    # if data_args.max_seq_length > tokenizer.model_max_length:
-    #     logger.warning(
-    #         f"The max_seq_length passed ({data_args.max_seq_length}) is larger than the maximum length for the"
-    #         f"model ({tokenizer.model_max_length}). Using max_seq_length={tokenizer.model_max_length}."
-    #     )
-    # max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
-    #
-    # def preprocess_function(examples):
-    #     # Tokenize the texts
-    #     args = (
-    #         (examples[sentence1_key],)
-    #         if sentence2_key is None
-    #         else (examples[sentence1_key], examples[sentence2_key])
-    #     )
-    #     result = tokenizer(
-    #         *args, padding=padding, max_length=max_seq_length, truncation=True
-    #     )
-    #
-    #     # Map labels to IDs (not necessary for GLUE tasks)
-    #     # if label_to_id is not None and "label" in examples:
-    #     #     result["label"] = [
-    #     #         (label_to_id[l] if l != -1 else -1) for l in examples["label"]
-    #     #     ]
-    #     return result
-    #
-    # with training_args.main_process_first(desc="dataset map pre-processing"):
-    #     raw_datasets = raw_datasets.map(
-    #         preprocess_function,
-    #         batched=True,
-    #         load_from_cache_file=not data_args.overwrite_cache,
-    #         desc="Running tokenizer on dataset",
-    #     )
-    #
-    # train_dataset = raw_datasets["train"]
-    # test_dataset = raw_datasets[
-    #     "validation_matched" if data_args.task_name == "mnli" else "validation"
-    # ]
-    #
-    # train_dataset = train_dataset.remove_columns(["idx"])
-    # test_dataset = test_dataset.remove_columns(["idx"])
-    #
-    # # Split training dataset in training / validation
-    # split = train_dataset.train_test_split(
-    #     train_size=0.7, seed=0
-    # )  # fix seed, all trials have the same data split
-    # valid_dataset = split["test"]
-    #
-    # if data_args.task_name in ['sst2', 'qqp', 'qnli', 'mnli']:
-    #     valid_dataset = Subset(
-    #         valid_dataset,
-    #         np.random.choice(len(valid_dataset), 2048).tolist(),
-    #     )
-    #
-    # # Get the metric function
-    # metric = load('glue', data_args.task_name)
-    #
-    # # Data collator will default to DataCollatorWithPadding when the tokenizer is passed to Trainer, so we change it if
-    # # we already did the padding.
-    # if data_args.pad_to_max_length:
-    #     data_collator = default_data_collator
-    # elif training_args.fp16:
-    #     data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
-    # else:
-    #     data_collator = None
-    #
-    # eval_dataloader = DataLoader(
-    #     valid_dataset,
-    #     batch_size=training_args.per_device_eval_batch_size,
-    #     collate_fn=data_collator,
-    # )
-    # test_dataloader = DataLoader(
-    #     test_dataset,
-    #     batch_size=training_args.per_device_eval_batch_size,
-    #     collate_fn=data_collator,
-    # )
 
     data_loading_time = time.time() - st
 
@@ -440,7 +341,6 @@ def main():
 
     results = {}
     results["dataset"] = data_args.task_name
-    # results['test_' + metric_name] = float(test_metric[metric_name])
     results[metric_name] = list(costs[:, 0])
     results["params"] = list(costs[:, 1])
     results["test_pareto"] = test_pareto
@@ -451,7 +351,7 @@ def main():
     results["data_loading_time"] = data_loading_time
     results["runtime"] = runtime
 
-    print(results)
+    os.makedirs(training_args.output_dir, exist_ok=True)
     fname = os.path.join(
         training_args.output_dir, f"results_{data_args.task_name}.json"
     )
