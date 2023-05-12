@@ -10,6 +10,8 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+import sagemaker
+
 from sagemaker.pytorch import PyTorch
 from sagemaker.debugger import TensorBoardOutputConfig
 
@@ -26,10 +28,13 @@ dataset = "rte"
 seed = 0
 num_epochs = 20
 search_space = "small"
-checkpoint = "one_shot"
+sampling = "one_shot"
 instance_type = "ml.g4dn.xlarge"
 accelerate = False
 entry_point = "train_supernet.py"
+
+bucket = sagemaker.Session().default_bucket()
+log_dir_tensorboard = "/opt/ml/output/tensorboard"
 
 if model_type in ["gpt2-xl"]:
     instance_type = "ml.g5.12xlarge"
@@ -60,7 +65,7 @@ hyperparameters = {
     "task_name": dataset,
     "num_train_epochs": num_epochs,
     "save_strategy": "epoch",
-    "sampling_strategy": checkpoint,
+    "sampling_strategy": sampling,
     "learning_rate": 2e-05,
     "per_device_train_batch_size": 4,
     "per_device_eval_batch_size": 8,
@@ -76,42 +81,33 @@ if accelerate:
 
 sm_args["hyperparameters"] = hyperparameters
 sm_args["checkpoint_s3_uri"] = (
-    f"s3://sagemaker-us-west-2-770209394645/checkpoints_nas/"
+    f"s3://{bucket}/checkpoints_nas/"
     f"{search_space}/"
     f"{model_type}"
     f"/epochs_{num_epochs}/"
     f"{dataset}/"
-    f"{checkpoint}/"
+    f"{sampling}/"
     f"seed_{seed}/"
 )
 
-sm_args["metric_definitions"] = [
-    {"Name": "epoch", "Regex": "'epoch=(.*?);'"},
-    {"Name": "training loss", "Regex": "'training loss=(.*?);'"},
-    {"Name": "evaluation metrics", "Regex": "'training loss=(.*?);'"},
-    {"Name": "runtime", "Regex": "'runtime=(.*?);'"},
-]
-
-LOG_DIR = "/opt/ml/output/tensorboard"
-
 output_path = (
-    f"s3://sagemaker-us-west-2-770209394645/tensorboard/"
+    f"s3://{bucket}/tensorboard/"
     f"{search_space}/"
     f"{model_type}"
     f"/epochs_{num_epochs}/"
     f"{dataset}/"
-    f"{checkpoint}/"
+    f"{sampling}/"
     f"seed_{seed}/"
 )
 tensorboard_output_config = TensorBoardOutputConfig(
-    s3_output_path=output_path, container_local_output_path=LOG_DIR
+    s3_output_path=output_path, container_local_output_path=log_dir_tensorboard
 )
 sm_args["tensorboard_output_config"] = tensorboard_output_config
 
 est = PyTorch(**sm_args)
 hash = random_string(4)
 
-job_name = f"{model_type}-{search_space}-{dataset}-{checkpoint.replace('_', '-')}-{seed}-{hash}"
+job_name = f"{model_type}-{search_space}-{dataset}-{sampling.replace('_', '-')}-{seed}-{hash}"
 print(f"Start job {job_name}")
 est.fit(
     job_name=job_name,
