@@ -107,7 +107,9 @@ sm_args["tensorboard_output_config"] = tensorboard_output_config
 est = PyTorch(**sm_args)
 hash = random_string(4)
 
-job_name = f"{model_type}-{search_space}-{dataset}-{sampling.replace('_', '-')}-{seed}-{hash}"
+job_name = (
+    f"{model_type}-{search_space}-{dataset}-{sampling.replace('_', '-')}-{seed}-{hash}"
+)
 print(f"Start job {job_name}")
 est.fit(
     job_name=job_name,
