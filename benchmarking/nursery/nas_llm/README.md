@@ -28,20 +28,22 @@ To run the training of the super-network, execute the following script:
 
 ```python train_supernet.py --fp16 True --learning_rate 2e-05 --model_name_or_path bert-base-cased --num_train_epochs 20 --output_dir ./supernet_model_checkpoint --per_device_eval_batch_size 8 --per_device_train_batch_size 4 --sampling_strategy one_shot --save_strategy epoch --search_space small --seed 0 --task_name rte``` 
 
+This runs the super-network training ('one_shot') on the RTE dataset for 20 epochs. Checkpoints are saved in the
+`output_dir`, such that we can load it later for the multi-objective search.
 
 ### Distributed Training via Accelerate
 
-For larger models, for example GPT-2-XL, we distribute the training across multiple GPUs on the same instance via HuggingFace Accelearte and DeepSpeed.
-For that all you have to do is to pass the `--use_accelerate True` to the training script. 
+For larger models, for example GPT-2-XL, we have to distribute the training across multiple GPUs on the same instance via HuggingFace Accelearte and DeepSpeed.
+For that, all you have to do is to pass the `--use_accelerate True` to the training script. 
 You can customize deepspeed by updated `default_config.yaml`. For more information, see `https://huggingface.co/docs/accelerate/v0.11.0/en/deepspeed#how-it-works`
 
-### Launching Experiments on SageMaker
+### Running it on SageMaker
 
 If you want to run this on SageMaker, you can run the following launcher script:
 
 ```python launch_supernet_training.py``` 
 
-This will automatically upload the model checkpoints to S3, such that we can load them later for the multi-objective
+This will run the training in a SageMaker Training Job. The model checkpoints are automatically uploaded to S3, such that we can load them later for the multi-objective
 search.
 
 ### Tensorboard Visualization
@@ -62,27 +64,23 @@ Next, we use the model checkpoint from the previous step to perform the multi-ob
 
 ```python run_offline_search.py --model_name_or_path bert-base-cased --num_samples 500 --output_dir ./results_nas  --checkpoint_dir_model ./supernet_model_checkpoint --search_space small --search_strategy local_search --seed 0 --task_name rte``` 
 
+Make sure that `checkpoint_dir_model` points to the directory with the model checkpoint from the previous step. 
+Results will be saved as a json file in `output_dir`.
+
+### Running it on SageMaker
+
 We can also run this on SageMaker:
 
 ```python launch_offline_search.py``` 
 
 
-This script will automatically download the model checkpoint and upload the results to S3.
+This script will automatically download the model checkpoint created during the super-network training from S3.
+After the search, results are uploaded to S3.
 
 ## Select the Optimal Model
 
-At the end we can visualize the Pareto set of sub-networks: TBD
-
-To select a network we instantiate a new model and copy the checkpoint. TBD
-
+TBD
 
 ## Run all Experiments
 
-To run all experiments described in TODO REF on SageMaker run:
-
-```python launch_all_supernet_training.py``` 
-
-This will spawn on SageMaker training job for each super-network training. Afterwards, we can start all
-multi-objective search runs:
-
-```python launch_all_offline_search.py``` 
+TBD
