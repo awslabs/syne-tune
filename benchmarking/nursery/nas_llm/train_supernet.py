@@ -363,7 +363,12 @@ def main():
 
     metric_name = TASKINFO[data_args.task_name]["metric"]
 
-    kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
+    if is_regression:
+        distillation_loss = nn.MSELoss()
+    else:
+        kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
+        distillation_loss = lambda x, y: kl_loss(F.log_softmax(x, dim=-1),
+                    F.log_softmax(y, dim=-1))
 
     if model_type.startswith("gpt2"):
         neuron_mask = apply_neuron_mask_gpt2
@@ -413,10 +418,11 @@ def main():
                 for handle in handles:
                     handle.remove()
                 # loss = loss_KD_fn(outputs.logits, y_teacher, batch['labels'], is_regression=is_regression)
-                loss = kl_loss(
-                    F.log_softmax(outputs.logits, dim=-1),
-                    F.log_softmax(y_teacher, dim=-1),
-                )
+                # loss = distillation_loss(
+                #     F.log_softmax(outputs.logits, dim=-1),
+                #     F.log_softmax(y_teacher, dim=-1),
+                # )
+                loss = distillation_loss(outputs.logits, y_teacher)
                 accelerator.backward(
                     loss
                 ) if nas_args.use_accelerate else loss.backward()
@@ -432,10 +438,11 @@ def main():
                 for handle in handles:
                     handle.remove()
                 # loss = loss_KD_fn(outputs.logits, y_teacher, batch['labels'], is_regression=is_regression)
-                loss = kl_loss(
-                    F.log_softmax(outputs.logits, dim=-1),
-                    F.log_softmax(y_teacher, dim=-1),
-                )
+                # loss = distillation_loss(
+                #     F.log_softmax(outputs.logits, dim=-1),
+                #     F.log_softmax(y_teacher, dim=-1),
+                # )
+                loss = distillation_loss(outputs.logits, y_teacher)
                 writer.add_scalar("loss random sub-network", loss, step)
                 accelerator.backward(
                     loss
@@ -451,10 +458,11 @@ def main():
 
                 for handle in handles:
                     handle.remove()
-                loss = kl_loss(
-                    F.log_softmax(outputs.logits, dim=-1),
-                    F.log_softmax(y_teacher, dim=-1),
-                )
+                # loss = distillation_loss(
+                #     F.log_softmax(outputs.logits, dim=-1),
+                #     F.log_softmax(y_teacher, dim=-1),
+                # )
+                loss = distillation_loss(outputs.logits, y_teacher)
                 writer.add_scalar("loss random sub-network", loss, step)
                 accelerator.backward(
                     loss
