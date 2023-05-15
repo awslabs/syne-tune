@@ -367,8 +367,9 @@ def main():
         distillation_loss = nn.MSELoss()
     else:
         kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
-        distillation_loss = lambda x, y: kl_loss(F.log_softmax(x, dim=-1),
-                    F.log_softmax(y, dim=-1))
+        distillation_loss = lambda x, y: kl_loss(
+            F.log_softmax(x, dim=-1), F.log_softmax(y, dim=-1)
+        )
 
     if model_type.startswith("gpt2"):
         neuron_mask = apply_neuron_mask_gpt2
