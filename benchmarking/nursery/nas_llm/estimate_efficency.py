@@ -52,15 +52,24 @@ def compute_parameters(dmodel, dhead, num_heads_per_layer, num_neurons_per_layer
 
     num_parameters = 0
     for layer in range(num_layers):
-        n_attention = (
-            (dmodel * dhead + dhead) * num_heads_per_layer[layer] * 3
-        )  # attention
-        n_attention += dmodel * dmodel + dmodel  # output
-        n_ffn = (
-            2 * dmodel * num_neurons_per_layer[layer]
-            + dmodel
-            + num_neurons_per_layer[layer]
-        )
         n_layer_norm = 2 * dmodel
-        num_parameters += n_attention + n_layer_norm + n_ffn + n_layer_norm
+        if num_heads_per_layer[layer] > 0:
+            n_attention = (
+                (dmodel * dhead + dhead) * num_heads_per_layer[layer] * 3
+            )  # attention
+            n_attention += dmodel * dmodel + dmodel  # output
+            n_attention += n_layer_norm
+        else:
+            n_attention = 0
+        if num_neurons_per_layer[layer] > 0:
+            n_ffn = (
+                2 * dmodel * num_neurons_per_layer[layer]
+                + dmodel
+                + num_neurons_per_layer[layer]
+            )
+            n_ffn += n_layer_norm
+        else:
+            n_ffn = 0
+
+        num_parameters += n_attention + n_ffn
     return int(num_parameters)
