@@ -207,3 +207,25 @@ class FullSearchSpace(SearchSpace):
         head_mask[0, 0] = 1
         ffn_mask[0, 0] = 1
         return head_mask, ffn_mask
+
+    def _define_config_space(self):
+        config_space = {}
+        for i in range(self.num_layers):
+            for j in range(self.num_heads):
+                config_space[f"layer_mha_{i}_{j}"] = choice([0, 1])
+            for j in range(self.intermediate_size):
+                config_space[f"layer_ffn_{i}_{j}"] = choice([0, 1])
+        return config_space
+
+    def config_to_mask(self, config):
+        head_mask = torch.zeros((self.num_layers, self.num_heads))
+        ffn_mask = torch.zeros((self.num_layers, self.intermediate_size))
+        for i in range(self.num_layers):
+            for j in range(self.num_heads):
+                if config[f"layer_mha_{i}_{j}"] == 1:
+                    head_mask[i, j] = 1
+            for j in range(self.intermediate_size):
+                if config[f"layer_ffn_{i}_{j}"] == 1:
+                    ffn_mask[i, j] = 1
+
+        return head_mask, ffn_mask
