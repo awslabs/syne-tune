@@ -36,8 +36,7 @@ accelerator = accelerate.Accelerator()
 logger = logging.getLogger(__name__)
 
 
-def train_supernetwork(model, train_dataloader, eval_dataloader, metric,
-                       training_args):
+def train_supernetwork(model, train_dataloader, eval_dataloader, metric, training_args):
 
     writer = SummaryWriter(logdir=training_args.log_dir)
 
@@ -60,7 +59,9 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric,
     start_time = time.time()
     dropout_rate = np.linspace(0, 1, num_training_steps)
     step = 0
-    logger.info(f"Use {training_args.sampling_strategy} to update super-network training")
+    logger.info(
+        f"Use {training_args.sampling_strategy} to update super-network training"
+    )
 
     if training_args.is_regression:
         distillation_loss = nn.MSELoss()
@@ -82,9 +83,7 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric,
             eval_dataloader,
             model,
             optimizer,
-        ) = accelerator.prepare(
-            train_dataloader, eval_dataloader, model, optimizer
-        )
+        ) = accelerator.prepare(train_dataloader, eval_dataloader, model, optimizer)
 
     sampler = SmallSearchSpace(
         model.config, rng=np.random.RandomState(seed=training_args.seed)
@@ -176,7 +175,9 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric,
             logits = outputs.logits
             # predictions = torch.argmax(logits, dim=-1)
             predictions = (
-                torch.squeeze(logits) if training_args.is_regression else torch.argmax(logits, dim=-1)
+                torch.squeeze(logits)
+                if training_args.is_regression
+                else torch.argmax(logits, dim=-1)
             )
 
             metric.add_batch(predictions=predictions, references=batch["labels"])

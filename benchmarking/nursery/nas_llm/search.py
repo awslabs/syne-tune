@@ -105,7 +105,9 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
 
             logits = outputs.logits
             predictions = (
-                torch.squeeze(logits) if search_args.is_regression else torch.argmax(logits, dim=-1)
+                torch.squeeze(logits)
+                if search_args.is_regression
+                else torch.argmax(logits, dim=-1)
             )
 
             metric.add_batch(predictions=predictions, references=batch["labels"])
@@ -145,6 +147,6 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
     indices = np.arange(costs.shape[0])[idx]
     masks = [masks[i] for i in indices]
 
-    pareto_set = {'masks': masks}
+    pareto_set = {"masks": masks}
 
     return pareto_set
