@@ -148,6 +148,11 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
     masks = [masks[i] for i in indices]
     configs = [configs[i] for i in indices]
 
-    pareto_set = {"masks": masks, "error": costs[idx, 0], "params": costs[idx, 1], 'configs': configs}
+    pareto_set = {
+        "masks": masks,
+        "error": costs[idx, 0],
+        "params": costs[idx, 1],
+        "configs": configs,
+    }
 
     return pareto_set
