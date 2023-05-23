@@ -57,11 +57,7 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
     model.to(device)
 
     start_time = time.time()
-    dropout_rate = np.linspace(0, 1, num_training_steps)
     step = 0
-    logger.info(
-        f"Use {training_args.sampling_strategy} to update super-network training"
-    )
 
     if training_args.is_regression:
         distillation_loss = nn.MSELoss()
