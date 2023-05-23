@@ -146,7 +146,8 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
     idx = get_pareto_optimal(costs)
     indices = np.arange(costs.shape[0])[idx]
     masks = [masks[i] for i in indices]
+    configs = [configs[i] for i in indices]
 
-    pareto_set = {"masks": masks, "error": costs[idx][0], "params": costs[idx][1]}
+    pareto_set = {"masks": masks, "error": costs[idx, 0], "params": costs[idx, 1], 'configs': configs}
 
     return pareto_set
