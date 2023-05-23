@@ -21,7 +21,7 @@ from tqdm.auto import tqdm
 from transformers import get_scheduler
 from torch.optim import AdamW
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 
 from tensorboardX import SummaryWriter
 
