@@ -19,7 +19,7 @@ from syne_tune.optimizer.baselines import RandomSearch
 
 from estimate_efficency import compute_parameters
 from ask_tell_scheduler import AskTellScheduler
-from sampling import SmallSearchSpace
+from sampling import LayerSearchSpace
 from multi_objective import get_pareto_optimal
 from masking import apply_neuron_mask
 from masking_gpt import apply_neuron_mask_gpt2
@@ -118,7 +118,7 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
 
         return 1 - eval_metric[metric_name], n_params
 
-    search_space = SmallSearchSpace(model.config)
+    search_space = LayerSearchSpace(model.config)
 
     base_scheduler = RandomSearch(
         config_space=search_space.get_syne_tune_config_space(),
