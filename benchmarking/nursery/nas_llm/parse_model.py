@@ -50,9 +50,9 @@ def get_final_model(original_model, architecture_definition):
     new_model = deepcopy(original_model)
 
     for i in range(new_model.config.num_hidden_layers):
-        if architecture_definition[f"layer_mha_{i}"] == 1:
+        if architecture_definition[f"layer_mha_{i}"] == 0:
             new_model.bert.encoder.layer[i].attention = IdentityAttention()
-        if architecture_definition[f"layer_ffn_{i}"] == 1:
+        if architecture_definition[f"layer_ffn_{i}"] == 0:
             new_model.bert.encoder.layer[i].intermediate = IdentityFFN()
             new_model.bert.encoder.layer[i].output = IdentityOutput()
 
