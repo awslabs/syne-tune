@@ -15,7 +15,6 @@ import torch.nn as nn
 from copy import deepcopy
 
 
-
 class IdentityAttention(nn.Module):
     def __init__(self, model_type=None):
         self.model_type = model_type
@@ -64,9 +63,10 @@ def copy_linear_layer(new_layer, old_layer, weight_shape, bias_shape):
     old_state = old_layer.state_dict()
     new_state_dict = OrderedDict()
     print(weight_shape, old_state["weight"].shape)
-    new_state_dict["weight"] = old_state["weight"][:weight_shape[0], :weight_shape[1]]
-    new_state_dict["bias"] = old_state["bias"][: bias_shape]
+    new_state_dict["weight"] = old_state["weight"][: weight_shape[0], : weight_shape[1]]
+    new_state_dict["bias"] = old_state["bias"][:bias_shape]
     new_layer.load_state_dict(new_state_dict)
+
 
 def get_final_bert_model(original_model, new_model_config):
 
@@ -77,7 +77,9 @@ def get_final_bert_model(original_model, new_model_config):
     new_model.classifier = model.classifier
 
     num_attention_heads = config.num_attention_heads
-    attention_head_size = int(config.hidden_size / original_model.config.num_attention_heads)
+    attention_head_size = int(
+        config.hidden_size / original_model.config.num_attention_heads
+    )
     all_head_size = num_attention_heads * attention_head_size
     for li, layer in enumerate(new_model.bert.encoder.layer):
 
@@ -89,19 +91,35 @@ def get_final_bert_model(original_model, new_model_config):
         attention.attention_head_size = attention_head_size
 
         mha_original_model = model.bert.encoder.layer[li].attention.self
-        copy_linear_layer(attention.query, mha_original_model.query,
-                          (all_head_size, config.hidden_size), (all_head_size))
+        copy_linear_layer(
+            attention.query,
+            mha_original_model.query,
+            (all_head_size, config.hidden_size),
+            (all_head_size),
+        )
 
-        copy_linear_layer(attention.key, mha_original_model.key,
-                          (all_head_size, config.hidden_size), (all_head_size))
+        copy_linear_layer(
+            attention.key,
+            mha_original_model.key,
+            (all_head_size, config.hidden_size),
+            (all_head_size),
+        )
 
-        copy_linear_layer(attention.value, mha_original_model.value,
-                          (all_head_size, config.hidden_size), (all_head_size))
+        copy_linear_layer(
+            attention.value,
+            mha_original_model.value,
+            (all_head_size, config.hidden_size),
+            (all_head_size),
+        )
 
         ffn_layer = layer.intermediate.dense
         ffn_original_model = model.bert.encoder.layer[li].intermediate.dense
-        copy_linear_layer(ffn_layer, ffn_original_model,
-                          (config.intermediate_size, config.hidden_size), (config.intermediate_size))
+        copy_linear_layer(
+            ffn_layer,
+            ffn_original_model,
+            (config.intermediate_size, config.hidden_size),
+            (config.intermediate_size),
+        )
 
     return new_model
 
