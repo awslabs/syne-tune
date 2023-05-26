@@ -124,6 +124,7 @@ def multi_objective_search(model, eval_dataloader, metric, metric_name, search_a
         config_space=search_space.get_syne_tune_config_space(),
         metric=["error", "params"],
         mode=["min", "min"],
+        random_seed=search_args.seed
     )
 
     scheduler = AskTellScheduler(base_scheduler=base_scheduler)
