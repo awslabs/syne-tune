@@ -13,6 +13,7 @@
 import torch
 import numpy as np
 
+
 def mac_per_head(
     seq_len,
     hidden_size,
@@ -78,7 +79,9 @@ def compute_parameters(dmodel, dhead, num_heads_per_layer, num_neurons_per_layer
 
 def compute_latency(model, tokenizer, batch, device):
     # train_dataset[0][sentence1_key], return_tensors='pt'
-    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
     repetitions = 300
     timings = np.zeros((repetitions, 1))
     # warm-up GPU
