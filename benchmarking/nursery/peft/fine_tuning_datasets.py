@@ -1,3 +1,15 @@
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
 import enum
 from functools import partial
 from dataclasses import dataclass
@@ -30,10 +42,15 @@ class FineTuningDataset:
 
 
 def get_glue_dataset(tokenizer, dataset_name):
-    train, valid, test = load_glue_datasets(tokenizer=tokenizer, dataset_name=dataset_name)
+    train, valid, test = load_glue_datasets(
+        tokenizer=tokenizer, dataset_name=dataset_name
+    )
     return FineTuningDataset(
-        valid_dataset=valid, train_dataset=train, collator=default_data_collator,
-        metric=load("glue", dataset_name), type=Tasks.SEQ_CLS
+        valid_dataset=valid,
+        train_dataset=train,
+        collator=default_data_collator,
+        metric=load("glue", dataset_name),
+        type=Tasks.SEQ_CLS,
     )
 
 
@@ -44,18 +61,18 @@ def get_swag(tokenizer):
         train_dataset=train_dataset,
         collator=DataCollatorForMultipleChoice(tokenizer),
         metric=accuracy,
-        type=Tasks.MUL_QA
+        type=Tasks.MUL_QA,
     )
 
 
 fine_tuning_datasets = {
-    "rte": partial(get_glue_dataset, dataset_name='rte'),
-    "mrpc": partial(get_glue_dataset, dataset_name='rte'),
-    "cola": partial(get_glue_dataset, dataset_name='rte'),
-    "stsb": partial(get_glue_dataset, dataset_name='stsb'),
-    "sst2": partial(get_glue_dataset, dataset_name='sst2'),
-    "qnli": partial(get_glue_dataset, dataset_name='qnli'),
-    "qqp":  partial(get_glue_dataset, dataset_name='qqp'),
-    "mnli": partial(get_glue_dataset, dataset_name='mnli'),
-    "swag": get_swag
+    "rte": partial(get_glue_dataset, dataset_name="rte"),
+    "mrpc": partial(get_glue_dataset, dataset_name="rte"),
+    "cola": partial(get_glue_dataset, dataset_name="rte"),
+    "stsb": partial(get_glue_dataset, dataset_name="stsb"),
+    "sst2": partial(get_glue_dataset, dataset_name="sst2"),
+    "qnli": partial(get_glue_dataset, dataset_name="qnli"),
+    "qqp": partial(get_glue_dataset, dataset_name="qqp"),
+    "mnli": partial(get_glue_dataset, dataset_name="mnli"),
+    "swag": get_swag,
 }

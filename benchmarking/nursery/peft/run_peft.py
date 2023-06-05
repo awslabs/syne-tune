@@ -72,26 +72,31 @@ if __name__ == "__main__":
 
     dataset = fine_tuning_datasets[data_args.task_name](tokenizer)
 
-    if search_args.peft_method == 'lora':
+    if search_args.peft_method == "lora":
         peft_config = LoraConfig(
-            task_type=TaskType.SEQ_CLS, inference_mode=False, r=search_args.lora_r,
-            lora_alpha=search_args.lora_alpha, lora_dropout=search_args.lora_dropout,
+            task_type=TaskType.SEQ_CLS,
+            inference_mode=False,
+            r=search_args.lora_r,
+            lora_alpha=search_args.lora_alpha,
+            lora_dropout=search_args.lora_dropout,
         )
-    if search_args.peft_method == 'p_tuning':
-        peft_config = PromptEncoderConfig(task_type="SEQ_CLS",
-                                          num_virtual_tokens=search_args.p_tuning_num_virtual_tokens,
-                                          encoder_hidden_size=search_args.p_tuning_encoder_hidden_size)
+    if search_args.peft_method == "p_tuning":
+        peft_config = PromptEncoderConfig(
+            task_type="SEQ_CLS",
+            num_virtual_tokens=search_args.p_tuning_num_virtual_tokens,
+            encoder_hidden_size=search_args.p_tuning_encoder_hidden_size,
+        )
 
     if dataset.type == Tasks.MUL_QA:
         model = AutoModelForMultipleChoice.from_pretrained(model_name)
     elif dataset.type == Tasks.SEQ_CLS:
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-    if search_args.peft_method != 'fine_tuning':
+    if search_args.peft_method != "fine_tuning":
         model = get_peft_model(model, peft_config)
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f'Number of trainable parameters: {n_params}')
+    print(f"Number of trainable parameters: {n_params}")
     trainer = Trainer(
         model,
         training_args,

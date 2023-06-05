@@ -32,9 +32,7 @@ task_to_keys = {
 
 
 def load_glue_datasets(tokenizer, dataset_name):
-    raw_datasets = load_dataset(
-        "glue", dataset_name
-    )
+    raw_datasets = load_dataset("glue", dataset_name)
 
     # Preprocessing the raw_datasets
     sentence1_key, sentence2_key = task_to_keys[dataset_name]
