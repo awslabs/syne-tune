@@ -10,11 +10,15 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+
+from benchmarking.commons.baselines import MethodArguments
 from benchmarking.commons.default_baselines import (
     RandomSearch,
     MOREABench,
     LSOBOBench,
+    _baseline_kwargs,
 )
+from syne_tune.optimizer.baselines import NSGA2
 
 
 class Methods:
@@ -22,9 +26,13 @@ class Methods:
     MOREA = "MOREA"
     LSOBO = "LSOBO"
 
+def NSGA2Bench(method_arguments: MethodArguments, **kwargs):
+    return NSGA2(**_baseline_kwargs(method_arguments, kwargs))
+
 
 methods = {
     Methods.RS: lambda method_arguments: RandomSearch(method_arguments),
-    Methods.MOREA: lambda method_arguments: MOREABench(method_arguments),
-    Methods.LSOBO: lambda method_arguments: LSOBOBench(method_arguments),
+    Methods.MOREA: lambda method_arguments: MOREABench(method_arguments, population_size=10, sample_size=5),
+    Methods.LSOBO: lambda method_arguments: LSOBOBench(method_arguments, searcher="bayesopt"),
+
 }
