@@ -41,9 +41,9 @@ class FineTuningDataset:
     type: str
 
 
-def get_glue_dataset(tokenizer, dataset_name):
+def get_glue_dataset(tokenizer, data_args, dataset_name):
     train, valid, test = load_glue_datasets(
-        tokenizer=tokenizer, dataset_name=dataset_name
+        tokenizer=tokenizer, dataset_name=dataset_name, data_args=data_args
     )
 
     metric = load("glue", dataset_name)
@@ -66,7 +66,7 @@ def get_glue_dataset(tokenizer, dataset_name):
     )
 
 
-def get_swag(tokenizer):
+def get_swag(tokenizer, data_args):
     valid_dataset, train_dataset = load_swag()
     return FineTuningDataset(
         valid_dataset=valid_dataset,

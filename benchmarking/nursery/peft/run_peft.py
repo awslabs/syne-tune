@@ -74,8 +74,8 @@ if __name__ == "__main__":
 
     model_name = model_args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-
-    dataset = fine_tuning_datasets[data_args.task_name](tokenizer)
+    if 'gpt' in model_name:
+        tokenizer.pad_token = tokenizer.eos_token
 
     if search_args.peft_method == "lora":
         peft_config = LoraConfig(
@@ -92,10 +92,15 @@ if __name__ == "__main__":
             encoder_hidden_size=search_args.p_tuning_encoder_hidden_size,
         )
 
+    dataset = fine_tuning_datasets[data_args.task_name](tokenizer, data_args)
+
     if dataset.type == Tasks.MUL_QA:
         model = AutoModelForMultipleChoice.from_pretrained(model_name)
     elif dataset.type == Tasks.SEQ_CLS:
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+    if 'gpt' in model_name:
+        model.config.pad_token_id = model.config.eos_token_id
 
     if search_args.peft_method != "fine_tuning":
         model = get_peft_model(model, peft_config)

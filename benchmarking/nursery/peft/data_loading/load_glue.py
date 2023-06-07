@@ -31,7 +31,7 @@ task_to_keys = {
 }
 
 
-def load_glue_datasets(tokenizer, dataset_name):
+def load_glue_datasets(tokenizer, dataset_name, data_args):
     raw_datasets = load_dataset("glue", dataset_name)
 
     # Preprocessing the raw_datasets
@@ -39,9 +39,7 @@ def load_glue_datasets(tokenizer, dataset_name):
 
     # Padding strategy
     padding = "max_length"
-    print(tokenizer.model_max_length)
-    max_seq_length = tokenizer.model_max_length
-    # max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
+    max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
 
     def preprocess_function(examples):
         # Tokenize the texts
