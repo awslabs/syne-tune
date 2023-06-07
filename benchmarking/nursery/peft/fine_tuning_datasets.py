@@ -20,10 +20,7 @@ from datasets import Dataset
 
 from data_loading.load_swag import load_swag, DataCollatorForMultipleChoice, accuracy
 from data_loading.load_glue import load_glue_datasets
-from transformers import (
-    default_data_collator,
-    EvalPrediction
-)
+from transformers import default_data_collator, EvalPrediction
 
 
 from evaluate import load
@@ -50,7 +47,8 @@ def get_glue_dataset(tokenizer, dataset_name):
     )
 
     metric = load("glue", dataset_name)
-    is_regression = True if dataset_name == 'stsb' else False
+    is_regression = True if dataset_name == "stsb" else False
+
     def compute_metrics(p: EvalPrediction, is_regression):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         preds = np.squeeze(preds) if is_regression else np.argmax(preds, axis=1)
