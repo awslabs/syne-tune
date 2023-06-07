@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     model_name = model_args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    if 'gpt' in model_name:
+    if "gpt" in model_name:
         tokenizer.pad_token = tokenizer.eos_token
 
     if search_args.peft_method == "lora":
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     elif dataset.type == Tasks.SEQ_CLS:
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-    if 'gpt' in model_name:
+    if "gpt" in model_name:
         model.config.pad_token_id = model.config.eos_token_id
 
     if search_args.peft_method != "fine_tuning":
