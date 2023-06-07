@@ -42,14 +42,19 @@ class ReportBackMetrics(TrainerCallback):
     If ``additional_info`` is given, it is a static dict reported with each call.
     """
 
-    def __init__(self, trainer):
+    def __init__(self, trainer, additional_info=None):
         self.trainer = trainer
+        self.additional_info = (
+            additional_info if additional_info is not None else dict()
+        )
         self.report = Reporter()
 
     def on_evaluate(self, args, state, control, **kwargs):
         results = kwargs["metrics"].copy()
         results["step"] = state.global_step
         results["epoch"] = int(state.epoch)
+        for k, v in self.additional_info.items():
+            results[k] = v
         # Report results back to Syne Tune
         self.report(**results)
 
@@ -107,6 +112,8 @@ if __name__ == "__main__":
         compute_metrics=dataset.metric,
     )
 
-    trainer.add_callback(ReportBackMetrics(trainer=trainer))
+    trainer.add_callback(
+        ReportBackMetrics(trainer=trainer, additional_info={"num_params": n_params})
+    )
 
     trainer.train()
