@@ -11,6 +11,8 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 import enum
+import numpy as np
+
 from functools import partial
 from dataclasses import dataclass
 
@@ -20,6 +22,7 @@ from data_loading.load_swag import load_swag, DataCollatorForMultipleChoice, acc
 from data_loading.load_glue import load_glue_datasets
 from transformers import (
     default_data_collator,
+    EvalPrediction
 )
 
 
@@ -45,11 +48,22 @@ def get_glue_dataset(tokenizer, dataset_name):
     train, valid, test = load_glue_datasets(
         tokenizer=tokenizer, dataset_name=dataset_name
     )
+
+    metric = load("glue", dataset_name)
+    is_regression = True if dataset_name == 'stsb' else False
+    def compute_metrics(p: EvalPrediction, is_regression):
+        preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+        preds = np.squeeze(preds) if is_regression else np.argmax(preds, axis=1)
+        result = metric.compute(predictions=preds, references=p.label_ids)
+        if len(result) > 1:
+            result["combined_score"] = np.mean(list(result.values())).item()
+        return result
+
     return FineTuningDataset(
         valid_dataset=valid,
         train_dataset=train,
         collator=default_data_collator,
-        metric=load("glue", dataset_name),
+        metric=partial(compute_metrics, is_regression=is_regression),
         type=Tasks.SEQ_CLS,
     )
 
