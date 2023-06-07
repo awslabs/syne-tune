@@ -16,7 +16,7 @@ from typing import Optional
 
 @dataclass
 class SearchArguments:
-
+    st_checkpoint_dir: str = field()
     peft_method: str = field(default="lora")
 
     lora_r: int = field(default=8)
