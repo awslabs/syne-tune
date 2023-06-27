@@ -69,13 +69,13 @@ class SearchArguments:
     Arguments to define the search
     """
 
-
     num_layers: int = field()
     num_heads: int = field()
     num_units: int = field()
     checkpoint_dir_model: str = field(
         metadata={"help": ""}, default=os.environ["SM_CHANNEL_MODEL"]
     )
+
 
 def main():
     start_time = time.time()
@@ -172,10 +172,10 @@ def main():
     head_mask = torch.ones((num_layers, num_attention_heads))
     neuron_mask = torch.ones((num_layers, intermediate_size))
 
-    head_mask[search_args.num_layers:, :] = 0
-    head_mask[:search_args.num_layers:, search_args.num_heads:] = 0
-    neuron_mask[search_args.num_layers:, :] = 0
-    neuron_mask[:search_args.num_layers:, search_args.num_units:] = 0
+    head_mask[search_args.num_layers :, :] = 0
+    head_mask[: search_args.num_layers :, search_args.num_heads :] = 0
+    neuron_mask[search_args.num_layers :, :] = 0
+    neuron_mask[: search_args.num_layers :, search_args.num_units :] = 0
 
     head_mask = head_mask.to(device)
     neuron_mask = neuron_mask.to(device)
@@ -206,16 +206,12 @@ def main():
 
     eval_metric = metric.compute()
 
-    print(f'number of parameters: {n_params}')
-    print(f'validation score: {eval_metric[metric_name]}')
+    print(f"number of parameters: {n_params}")
+    print(f"validation score: {eval_metric[metric_name]}")
 
-    logger.info(
-        "validation score: {:.4f}\n".format(eval_metric[metric_name])
-    )
+    logger.info("validation score: {:.4f}\n".format(eval_metric[metric_name]))
 
-    logger.info(
-        "number of parameters: {:.4f}\n".format(n_params)
-    )
+    logger.info("number of parameters: {:.4f}\n".format(n_params))
 
 
 if __name__ == "__main__":
