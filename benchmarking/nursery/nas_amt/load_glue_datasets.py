@@ -114,6 +114,7 @@ def load_glue_datasets(training_args, model_args, data_args):
     split = train_dataset.train_test_split(
         train_size=0.7, seed=0
     )  # fix seed, all trials have the same data split
+    train_dataset = split["train"]
     valid_dataset = split["test"]
 
     if data_args.task_name in ["sst2", "qqp", "qnli", "mnli"]:
