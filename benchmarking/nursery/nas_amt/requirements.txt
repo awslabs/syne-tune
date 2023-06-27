@@ -1,0 +1,5 @@
+tqdm
+scipy
+numpy
+pandas
+evaluate
