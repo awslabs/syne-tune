@@ -188,7 +188,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
                     state_dict=accelerator.get_state_dict(model),
                 )
             else:
-                torch.save(
-                    model.state_dict(),
-                    os.path.join(training_args.output_dir, "checkpoint.pt"),
+                model.save_pretrained(
+                    training_args.output_dir
                 )
