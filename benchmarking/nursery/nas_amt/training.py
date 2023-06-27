@@ -27,7 +27,7 @@ from tensorboardX import SummaryWriter
 
 import accelerate
 
-from sampling import LayerSearchSpace
+from sampling import SmallSearchSpace
 from mask import mask_bert, mask_gpt
 
 accelerator = accelerate.Accelerator()
@@ -80,7 +80,7 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
             optimizer,
         ) = accelerator.prepare(train_dataloader, eval_dataloader, model, optimizer)
 
-    sampler = LayerSearchSpace(
+    sampler = SmallSearchSpace(
         model.config, rng=np.random.RandomState(seed=training_args.seed)
     )
 
