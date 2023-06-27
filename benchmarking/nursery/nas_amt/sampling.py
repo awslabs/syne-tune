@@ -47,13 +47,12 @@ class SearchSpace(object):
 
 
 class SmallSearchSpace(SearchSpace):
-
     def __call__(self, *args, **kwargs):
         num_layers = self.rng.randint(self.num_layers)
         num_heads = self.rng.randint(1, self.num_heads)
         num_units = self.rng.randint(1, self.intermediate_size)
 
-        self._create_mask(num_layers, num_heads, num_units)
+        return self._create_mask(num_layers, num_heads, num_units)
 
     def _create_mask(self, num_layers, num_heads, num_units):
         head_mask = torch.ones((self.num_layers, self.num_heads))
