@@ -188,6 +188,4 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
                     state_dict=accelerator.get_state_dict(model),
                 )
             else:
-                model.save_pretrained(
-                    training_args.output_dir
-                )
+                model.save_pretrained(training_args.output_dir)

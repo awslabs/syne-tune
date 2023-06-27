@@ -119,7 +119,9 @@ def main():
         training_args=training_args, model_args=model_args, data_args=data_args
     )
 
-    model = AutoModelForSequenceClassification.from_pretrained(search_args.checkpoint_dir_model)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        search_args.checkpoint_dir_model
+    )
 
     config = model.config
     if model_type.startswith("bert"):
