@@ -23,8 +23,6 @@ from torch.optim import AdamW
 from torch import nn
 import torch.nn.functional as F
 
-from tensorboardX import SummaryWriter
-
 import accelerate
 
 from sampling import SmallSearchSpace
@@ -36,8 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 def train_supernetwork(model, train_dataloader, eval_dataloader, metric, training_args):
-
-    writer = SummaryWriter(logdir=training_args.log_dir)
 
     optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
 
@@ -95,7 +91,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
             outputs = model(**batch)
             loss = outputs.loss
             y_teacher = outputs.logits.detach()
-            writer.add_scalar("loss largest sub-network", loss, step)
             accelerator.backward(
                 loss
             ) if training_args.use_accelerate else loss.backward()
@@ -114,7 +109,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
             accelerator.backward(
                 loss
             ) if training_args.use_accelerate else loss.backward()
-            writer.add_scalar("loss smallest sub-network", loss, step)
 
             # update random sub-network
             head_mask, ffn_mask = sampler()
@@ -127,7 +121,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
                 handle.remove()
 
             loss = distillation_loss(outputs.logits, y_teacher)
-            writer.add_scalar("loss random sub-network", loss, step)
             accelerator.backward(
                 loss
             ) if training_args.use_accelerate else loss.backward()
@@ -144,7 +137,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
                 handle.remove()
 
             loss = distillation_loss(outputs.logits, y_teacher)
-            writer.add_scalar("loss random sub-network", loss, step)
             accelerator.backward(
                 loss
             ) if training_args.use_accelerate else loss.backward()
@@ -155,8 +147,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
             lr_scheduler.step()
             optimizer.zero_grad()
             progress_bar.update(1)
-
-            writer.add_scalar("lr", lr_scheduler.get_lr(), step)
 
             train_loss += loss
 
@@ -184,10 +174,6 @@ def train_supernetwork(model, train_dataloader, eval_dataloader, metric, trainin
             f"evaluation metrics = {eval_metric}, "
             f"runtime = {runtime}"
         )
-
-        for k, v in eval_metric.items():
-            writer.add_scalar(f"eval-{k}", v, epoch)
-        writer.add_scalar("runtime", runtime, epoch)
 
         if training_args.save_strategy == "epoch":
             os.makedirs(training_args.output_dir, exist_ok=True)
