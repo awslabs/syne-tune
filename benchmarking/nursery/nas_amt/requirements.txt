@@ -3,3 +3,5 @@ scipy
 numpy
 pandas
 evaluate
+transformers
+accelerate
