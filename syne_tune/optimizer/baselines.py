@@ -25,7 +25,7 @@ from syne_tune.optimizer.schedulers.multiobjective import (
     MultiObjectiveRegularizedEvolution,
     NSGA2Searcher,
     LinearScalarizedScheduler,
-    ExpectedHyperVolumeImprovement
+    ExpectedHyperVolumeImprovement,
 )
 from syne_tune.optimizer.schedulers.searchers.bayesopt.models.estimator import Estimator
 from syne_tune.optimizer.schedulers.searchers.regularized_evolution import (
@@ -968,6 +968,7 @@ class EHVI(FIFOScheduler):
             random_seed=random_seed,
             **kwargs,
         )
+
 
 class MOLinearScalarizationBayesOpt(LinearScalarizedScheduler):
     """

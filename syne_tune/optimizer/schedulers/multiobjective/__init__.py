@@ -30,7 +30,7 @@ __all__ = [
     "MultiObjectiveRegularizedEvolution",
     "NSGA2Searcher",
     "LinearScalarizedScheduler",
-    "ExpectedHyperVolumeImprovement"
+    "ExpectedHyperVolumeImprovement",
 ]
 
 try:
