@@ -21,12 +21,16 @@ from syne_tune.optimizer.schedulers.multiobjective.nsga2_searcher import (
 from syne_tune.optimizer.schedulers.multiobjective.linear_scalarizer import (
     LinearScalarizedScheduler,
 )
+from syne_tune.optimizer.schedulers.multiobjective.expected_hyper_volume_improvement import (
+    ExpectedHyperVolumeImprovement,
+)
 
 __all__ = [
     "MOASHA",
     "MultiObjectiveRegularizedEvolution",
     "NSGA2Searcher",
     "LinearScalarizedScheduler",
+    "ExpectedHyperVolumeImprovement"
 ]
 
 try:
