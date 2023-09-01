@@ -10,8 +10,7 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
-from .utils import get_backbone, \
-    register_drop_attention_layer
+from .utils import get_backbone, register_drop_attention_layer
 
 
 def get_ffn2(model, index):
@@ -30,7 +29,6 @@ def get_mlp(model, index):
     layer = get_layers(model)[index]
     output = layer.mlp
     return output
-
 
 
 def register_mask_ffn(module, mask):
