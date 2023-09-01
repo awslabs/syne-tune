@@ -21,6 +21,8 @@ def parse_model_name(model_args):
         model_type = "google/electra-base-discriminator"
     elif model_args.model_name_or_path in ["electra-small"]:
         model_type = "google/electra-small-discriminator"
+    elif model_args.model_name_or_path.startswith("pythia"):
+        model_type = "EleutherAI/" + model_args.model_name_or_path
     else:
         model_type = model_args.model_name_or_path
     return model_type
@@ -57,6 +59,10 @@ class DataTrainingArguments:
             "help": "Whether to pad all samples to `max_seq_length`. "
             "If False, will pad the samples dynamically when batching to the maximum length in the batch."
         },
+    )
+    dataset_seed: int = field(
+        default=42,
+        metadata={},
     )
 
 

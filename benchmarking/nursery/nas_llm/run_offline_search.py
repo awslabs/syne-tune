@@ -30,30 +30,27 @@ import datasets
 import transformers
 import accelerate
 
-from masking import apply_neuron_mask
-from masking_gpt import apply_neuron_mask_gpt2
+from mask import mask_bert, mask_gpt, mask_gpt_neox
 from multi_objective import get_pareto_optimal
 
-from torch.utils.data import DataLoader, Subset
-
-from datasets import load_dataset
-
 from transformers import (
-    AutoTokenizer,
-    DataCollatorWithPadding,
     HfArgumentParser,
     AutoConfig,
     TrainingArguments,
-    default_data_collator,
     set_seed,
+    AutoModelForSequenceClassification,
 )
 
-from transformers.models.bert.modeling_bert import BertForSequenceClassification
+from transformers.models.bert.modeling_bert import (
+    BertForSequenceClassification,
+    BertConfig,
+)
 from transformers.models.gpt2.modeling_gpt2 import GPT2ForSequenceClassification
 
 from tensorboardX import SummaryWriter
 
 from evaluate import load
+from functools import partial
 
 from estimate_efficency import compute_parameters
 from task_data import TASKINFO
@@ -65,7 +62,7 @@ from sampling import (
 )
 from baselines import MethodArguments, methods
 from ask_tell_scheduler import AskTellScheduler
-from hf_args import DataTrainingArguments, ModelArguments
+from hf_args import DataTrainingArguments, ModelArguments, parse_model_name
 from load_glue_datasets import load_glue_datasets
 
 
@@ -76,6 +73,7 @@ SEARCHSPACES = {
     "medium": MediumSearchSpace,
     "layer": LayerSearchSpace,
     "uniform": FullSearchSpace,
+    "smallpower2": partial(SmallSearchSpace, power_of_2_encoding=True),
 }
 
 task_to_keys = {
@@ -113,6 +111,7 @@ class SearchArguments:
     use_accelerate: bool = field(metadata={"help": ""}, default=False)
     num_samples: int = field(default=500)
     log_dir: str = field(metadata={"help": ""}, default="./tensorboard_log_dir")
+    optimize_memory_footprint: bool = field(metadata={}, default=False)
 
 
 def main():
@@ -151,34 +150,17 @@ def main():
     print(training_args.seed)
     set_seed(training_args.seed)
 
-    if model_args.model_name_or_path in ["bert-small", "bert-medium", "bert-tiny"]:
-        model_type = "prajjwal1/" + model_args.model_name_or_path
-    elif model_args.model_name_or_path in ["electra-base"]:
-        model_type = "google/electra-base-discriminator"
-    elif model_args.model_name_or_path in ["electra-small"]:
-        model_type = "google/electra-small-discriminator"
-    else:
-        model_type = model_args.model_name_or_path
+    model_type = parse_model_name(model_args)
 
     st = time.time()
     # Downloading and loading a dataset from the hub.
-    raw_datasets = load_dataset(
-        "glue", data_args.task_name, cache_dir=model_args.cache_dir
-    )
-
-    # Labels
-    is_regression = data_args.task_name == "stsb"
-    if not is_regression:
-        label_list = raw_datasets["train"].features["label"].names
-        num_labels = len(label_list)
-    else:
-        num_labels = 1
-
     metric = load("glue", data_args.task_name)
 
-    _, eval_dataloader, test_dataloader = load_glue_datasets(
+    _, eval_dataloader, test_dataloader, tokenizer, num_labels = load_glue_datasets(
         training_args=training_args, model_args=model_args, data_args=data_args
     )
+
+    is_regression = data_args.task_name == "stsb"
 
     data_loading_time = time.time() - st
 
@@ -191,9 +173,9 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    if model_type.startswith("bert"):
-        model = BertForSequenceClassification(teacher_config)
 
+    model = AutoModelForSequenceClassification.from_config(teacher_config)
+    if model_type.startswith("bert"):
         attention_size = teacher_config.hidden_size
         num_attention_heads = teacher_config.num_attention_heads
         attention_head_size = int(attention_size / num_attention_heads)
@@ -210,7 +192,6 @@ def main():
         n_params_classifier += n_params_pooler
 
     elif model_type.startswith("gpt2"):
-        model = GPT2ForSequenceClassification(teacher_config)
         model.config.pad_token_id = model.config.eos_token_id
 
         num_attention_heads = teacher_config.n_head
@@ -227,28 +208,46 @@ def main():
         n_params_classifier = sum(
             p.numel() for p in model.score.parameters() if p.requires_grad
         )
+    elif "pythia" in model_type:
+        model.config.pad_token_id = model.config.eos_token_id
+
+        num_attention_heads = teacher_config.num_attention_heads
+        attention_size = teacher_config.hidden_size
+        attention_head_size = int(attention_size / num_attention_heads)
+
+        n_params_emb = sum(
+            p.numel() for p in model.gpt_neox.embed_in.parameters() if p.requires_grad
+        )
+        final_ln = sum(
+            p.numel()
+            for p in model.gpt_neox.final_layer_norm.parameters()
+            if p.requires_grad
+        )
+        n_params_classifier = sum(
+            p.numel() for p in model.score.parameters() if p.requires_grad
+        )
+
+        n_params_classifier += final_ln
+    n_params_super_net = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     if search_args.use_accelerate:
         model = accelerator.prepare(model)
-        model = model.from_pretrained(search_args.checkpoint_dir_model)
-    else:
-        model.load_state_dict(
-            torch.load(
-                os.path.join(search_args.checkpoint_dir_model, "checkpoint.pt"),
-                map_location="cuda:0",
-            ),
-        )
+    model = model.from_pretrained(search_args.checkpoint_dir_model)
+    memory_footprint_supernet = model.get_memory_footprint()
     model_loading_time = time.time() - st
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(device)
+    model.eval()
 
     metric_name = TASKINFO[data_args.task_name]["metric"]
 
     if model_type.startswith("gpt2"):
-        neuron_mask = apply_neuron_mask_gpt2
+        mask = mask_gpt
     elif model_type.startswith("bert"):
-        neuron_mask = apply_neuron_mask
+        mask = mask_bert
+    elif "pythia" in model_type:
+        mask = mask_gpt_neox
 
     def evaluate_masks(head_mask, ffn_mask, dataloader):
         n_params_model = compute_parameters(
@@ -259,7 +258,7 @@ def main():
         )
         n_params = n_params_emb + n_params_model + n_params_classifier
 
-        handles = neuron_mask(model, ffn_mask)
+        handles = mask(model, ffn_mask, head_mask)
 
         for batch in dataloader:
             batch = {k: v.to(device) for k, v in batch.items()}
@@ -278,14 +277,19 @@ def main():
         for handle in handles:
             handle.remove()
 
-        return 1 - eval_metric[metric_name], n_params
+        return 1 - eval_metric[metric_name], n_params / n_params_super_net
 
     search_space = SEARCHSPACES[search_args.search_space](model.config)
+
+    if search_args.optimize_memory_footprint:
+        metrics = ["error", "memory"]
+    else:
+        metrics = ["error", "params"]
 
     base_scheduler = methods[search_args.search_strategy](
         MethodArguments(
             config_space=search_space.get_syne_tune_config_space(),
-            metrics=["error", "params"],
+            metrics=metrics,
             mode=["min", "min"],
             random_seed=training_args.seed,
         )
@@ -303,21 +307,39 @@ def main():
         head_mask = head_mask.to(device)
         ffn_mask = ffn_mask.to(device)
         error, params = evaluate_masks(head_mask, ffn_mask, eval_dataloader)
-        scheduler.tell(trial_suggestion, {"error": error, "params": params})
-        costs[i][0] = error
-        costs[i][1] = params
+
+        if np.isnan(error) and is_regression:
+            error = 1
+
+        if search_args.optimize_memory_footprint:
+            hypers = trial_suggestion.config
+            c = BertConfig(
+                num_hidden_layers=hypers["num_layers"],
+                num_attention_heads=hypers["num_heads"],
+                intermediate_size=hypers["num_units"],
+                attention_size=attention_head_size,
+            )
+            temp_model = AutoModelForSequenceClassification.from_config(c)
+            memory = temp_model.get_memory_footprint() / memory_footprint_supernet
+            scheduler.tell(trial_suggestion, {"error": error, "memory": memory})
+            costs[i][0] = error
+            costs[i][1] = memory
+            print(memory)
+        else:
+            scheduler.tell(trial_suggestion, {"error": error, "params": params})
+            costs[i][0] = error
+            costs[i][1] = params * n_params_super_net
         masks.append((head_mask, ffn_mask))
         configs.append(trial_suggestion.config)
         print(trial_suggestion.config)
-        print(f"iteration={i};")
-        print(f"error={error};")
-        print(f"params={params};")
         writer.add_scalar("error", float(error), i)
         writer.add_scalar("params", int(params), i)
 
         runtime.append(time.time() - start_time)
         writer.add_scalar("runtime", runtime[-1], i)
-        logger.info(f"runtime = {runtime[-1]}")
+        logger.info(
+            f"iteration {i}: error={error} ; params={params}; runtime = {runtime[-1]}"
+        )
 
     idx = get_pareto_optimal(costs)
     indices = np.arange(costs.shape[0])[idx]
@@ -325,6 +347,7 @@ def main():
 
     os.makedirs(training_args.output_dir, exist_ok=True)
     test_pareto = []
+    model.eval()
     for i, (head_mask, ffn_mask) in enumerate(masks):
         error, n_params = evaluate_masks(
             head_mask, ffn_mask, dataloader=test_dataloader
@@ -342,15 +365,23 @@ def main():
     results = {}
     results["dataset"] = data_args.task_name
     results[metric_name] = list(costs[:, 0])
-    results["params"] = list(costs[:, 1])
+    if search_args.optimize_memory_footprint:
+        results["memory"] = list(costs[:, 1])
+        results["memory_pareto"] = list(costs[idx, 1])
+
+    else:
+        results["params"] = list(costs[:, 1])
+        results["params_pareto"] = list(costs[idx, 1])
+
     results["test_pareto"] = test_pareto
     if search_args.search_space != "uniform":
         results["config"] = configs
     results["eval_pareto"] = list(costs[idx, 0])
-    results["params_pareto"] = list(costs[idx, 1])
     results["model_loading_time"] = model_loading_time
     results["data_loading_time"] = data_loading_time
     results["runtime"] = runtime
+    results["indices"] = [int(i) for i in indices]
+    print(results)
 
     fname = os.path.join(
         training_args.output_dir, f"results_{data_args.task_name}.json"

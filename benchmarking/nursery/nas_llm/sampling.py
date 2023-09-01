@@ -13,7 +13,7 @@
 import numpy as np
 import torch
 
-from syne_tune.config_space import randint, choice, Domain
+from syne_tune.config_space import randint, choice, Domain, ordinal
 
 
 class SearchSpace(object):
@@ -21,7 +21,7 @@ class SearchSpace(object):
     Setting the mask to 1 means we keep the corresponding head / unit
     """
 
-    def __init__(self, config, rng=None):
+    def __init__(self, config, rng=None, **kwargs):
         self.config = config
 
         if config.model_type == "gpt2":
@@ -40,7 +40,7 @@ class SearchSpace(object):
             self.rng = np.random.RandomState(np.random.randint(2**32 - 1))
         else:
             self.rng = rng
-        self.config_space = self._define_config_space()
+        self.config_space = self._define_config_space(**kwargs)
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError
@@ -59,11 +59,21 @@ class SearchSpace(object):
 
 
 class SmallSearchSpace(SearchSpace):
-    def _define_config_space(self):
+    def _define_config_space(self, power_of_2_encoding=False):
         config_space = {}
         config_space["num_layers"] = randint(0, self.num_layers)
-        config_space["num_heads"] = randint(1, self.num_heads)
         config_space["num_units"] = randint(1, self.intermediate_size)
+
+        if power_of_2_encoding:
+            values = [
+                int(self.num_heads / 2**i)
+                for i in range(int(np.log2(self.num_heads)) + 1)
+            ]
+            values.reverse()
+            config_space["num_heads"] = ordinal(values, kind="nn-log")
+        else:
+            config_space["num_heads"] = randint(1, self.num_heads)
+
         return config_space
 
     def __call__(self, *args, **kwargs):
@@ -104,7 +114,13 @@ class MediumSearchSpace(SearchSpace):
     def _define_config_space(self):
         config_space = {}
         for i in range(self.num_layers):
-            config_space[f"num_heads_{i}"] = randint(0, self.num_heads)
+            values = [
+                int(self.num_heads / 2**i)
+                for i in range(int(np.log2(self.num_heads)) + 1)
+            ]
+            values.reverse()
+            config_space[f"num_heads_{i}"] = ordinal(values, kind="nn-log")
+            # config_space[f"num_heads_{i}"] = randint(0, self.num_heads)
             config_space[f"num_units_{i}"] = randint(0, self.intermediate_size)
         return config_space
 
@@ -140,6 +156,41 @@ class MediumSearchSpace(SearchSpace):
 
 
 class LayerSearchSpace(SearchSpace):
+    def _define_config_space(self):
+        config_space = {}
+        for i in range(self.num_layers):
+            config_space[f"layer_{i}"] = choice([0, 1])
+        return config_space
+
+    def config_to_mask(self, config):
+
+        layers = []
+        for i in range(self.num_layers):
+            if config[f"layer_{i}"] == 1:
+                layers.append(i)
+
+        return self._create_mask(layers)
+
+    def __call__(self, *args, **kwargs):
+        n_layers = self.rng.randint(0, self.num_layers)
+        layers = self.rng.choice(np.arange(self.num_layers), n_layers, replace=False)
+
+        return self._create_mask(layers)
+
+    def _create_mask(self, layers):
+
+        head_mask = torch.zeros((self.num_layers, self.num_heads))
+        ffn_mask = torch.zeros((self.num_layers, self.intermediate_size))
+        for li in layers:
+            head_mask[li, :] = 1
+            ffn_mask[li, :] = 1
+        return head_mask, ffn_mask
+
+    def get_smallest_sub_network(self):
+        return self._create_mask([])
+
+
+class FullLayerSearchSpace(SearchSpace):
     def _define_config_space(self):
         config_space = {}
         for i in range(self.num_layers):

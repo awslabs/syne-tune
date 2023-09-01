@@ -22,7 +22,11 @@ from transformers import (
     default_data_collator,
 )
 
-from hf_args import parse_model_name
+try:
+    from nas_fine_tuning.hf_args import parse_model_name
+except:
+    from hf_args import parse_model_name
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +60,7 @@ def load_glue_datasets(training_args, model_args, data_args):
         use_auth_token=True if model_args.use_auth_token else None,
     )
 
-    if model_type.startswith("gpt2"):
+    if model_type.startswith("gpt2") or "pythia" in model_type:
         tokenizer.pad_token = tokenizer.eos_token
 
     # Preprocessing the raw_datasets
@@ -112,8 +116,9 @@ def load_glue_datasets(training_args, model_args, data_args):
 
     # Split training dataset in training / validation
     split = train_dataset.train_test_split(
-        train_size=0.7, seed=0
+        train_size=0.7, seed=data_args.dataset_seed
     )  # fix seed, all trials have the same data split
+    train_dataset = split["train"]
     valid_dataset = split["test"]
 
     if data_args.task_name in ["sst2", "qqp", "qnli", "mnli"]:
@@ -146,4 +151,11 @@ def load_glue_datasets(training_args, model_args, data_args):
         collate_fn=data_collator,
     )
 
-    return train_dataloader, eval_dataloader, test_dataloader
+    is_regression = data_args.task_name == "stsb"
+    if not is_regression:
+        label_list = raw_datasets["train"].features["label"].names
+        num_labels = len(label_list)
+    else:
+        num_labels = 1
+
+    return train_dataloader, eval_dataloader, test_dataloader, tokenizer, num_labels
