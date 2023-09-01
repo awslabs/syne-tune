@@ -26,20 +26,10 @@ pip install -r requirements.txt
 
 To run the training of the super-network, execute the following script:
 
-```python train_supernet.py --fp16 True --learning_rate 2e-05 --model_name_or_path bert-base-cased --num_train_epochs 20 --output_dir ./supernet_model_checkpoint --per_device_eval_batch_size 8 --per_device_train_batch_size 4 --sampling_strategy one_shot --save_strategy epoch --search_space small --seed 0 --task_name rte``` 
+```python train_supernet.py --learning_rate 2e-05 --model_name_or_path bert-base-cased --num_train_epochs 20 --output_dir ./supernet_model_checkpoint --per_device_eval_batch_size 8 --per_device_train_batch_size 4 --sampling_strategy one_shot --save_strategy epoch --search_space small --seed 0 --task_name rte``` 
 
 This runs the super-network training ('one_shot') on the RTE dataset for 20 epochs. Checkpoints are saved in the
 `output_dir`, such that we can load it later for the multi-objective search.
-
-### Distributed Training via Accelerate
-
-For larger models, for example GPT-2-XL, we have to distribute the training across multiple GPUs on the same instance via HuggingFace Accelearte and DeepSpeed.
-To run the supernet-training, we have to run it via the `accelerate_launcher.py` which invokes our actual training script. 
-Make sure to add `--use_accelerate True` to your training arguments. This will make sure that checkpoints are saved in the correct format.
-
-```python accelerate_launcher.py --config_file default_config.yaml  --training_script train_supernet.py --fp16 True --learning_rate 2e-05 --model_name_or_path gpt2-xl --num_train_epochs 10 --output_dir ./supernet_model_checkpoint --per_device_eval_batch_size 8 --per_device_train_batch_size 4 --sampling_strategy one_shot --save_strategy epoch --search_space small --seed 0 --task_name rte --use_accelerate True```
-
-You can customize deepspeed by updated `default_config.yaml`. For more information, see `https://huggingface.co/docs/accelerate/v0.11.0/en/deepspeed#how-it-works`
 
 ### Running it on SageMaker
 
@@ -80,11 +70,3 @@ We can also run this on SageMaker:
 
 This script will automatically download the model checkpoint created during the super-network training from S3.
 After the search, results are uploaded to S3.
-
-## Select the Optimal Model
-
-TBD
-
-## Run all Experiments
-
-TBD

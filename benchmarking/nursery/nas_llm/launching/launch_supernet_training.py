@@ -36,13 +36,6 @@ entry_point = "train_supernet.py"
 bucket = sagemaker.Session().default_bucket()
 log_dir_tensorboard = "/opt/ml/output/tensorboard"
 
-if model_type in ["gpt2-xl"]:
-    instance_type = "ml.g5.12xlarge"
-    accelerate = True
-    num_epochs = 10
-    entry_point = "accelerate_launcher.py"
-
-
 sm_args = dict(
     entry_point=entry_point,
     source_dir=str(Path(__file__).parent.parent),
@@ -73,11 +66,6 @@ hyperparameters = {
     "fp16": True,
     "search_space": search_space,
 }
-
-if accelerate:
-    hyperparameters["use_accelerate"] = True
-    hyperparameters["training_script"] = "train_supernet.py"
-    hyperparameters["config_file"] = "default_config.yaml"
 
 sm_args["hyperparameters"] = hyperparameters
 sm_args["checkpoint_s3_uri"] = (

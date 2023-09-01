@@ -32,19 +32,12 @@ sampling = "one_shot"
 search_space = "small"
 run = 0
 
-use_accelerate = False
-
 entry_point = "run_offline_search.py"
 instance_type = "ml.g4dn.xlarge"
 num_samples = 500
 volume_size = 125
 bucket = sagemaker.Session().default_bucket()
 tensorboard_log_dir = "/opt/ml/output/tensorboard"
-
-if model_type in ["gpt2-xl"]:
-    instance_type = "ml.g5.8xlarge"
-    use_accelerate = True
-    volume_size = 900
 
 sm_args = dict(
     entry_point=entry_point,
@@ -71,8 +64,6 @@ hyperparameters = {
     "search_space": search_space,
     "num_samples": num_samples,
 }
-if use_accelerate:
-    hyperparameters["use_accelerate"] = True
 
 sm_args["hyperparameters"] = hyperparameters
 
