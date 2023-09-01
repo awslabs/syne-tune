@@ -10,6 +10,8 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+import torch
+import numpy as np
 
 
 def mac_per_head(
@@ -73,3 +75,28 @@ def compute_parameters(dmodel, dhead, num_heads_per_layer, num_neurons_per_layer
 
         num_parameters += n_attention + n_ffn
     return int(num_parameters)
+
+
+def compute_latency(model, tokenizer, batch, device):
+    # train_dataset[0][sentence1_key],
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(
+        enable_timing=True
+    )
+    repetitions = 300
+    timings = np.zeros((repetitions, 1))
+    # warm-up GPU
+    for _ in range(10):
+        _ = model(**tokenizer(batch, return_tensors="pt").to(device))
+    # measure latency
+    with torch.no_grad():
+        for rep in range(repetitions):
+            starter.record()
+            _ = model(**tokenizer(batch, return_tensors="pt").to(device))
+            ender.record()
+            # synchronize GPU
+            torch.cuda.synchronize()
+            curr_time = starter.elapsed_time(ender)
+            timings[rep] = curr_time
+    mean_syn = np.sum(timings) / repetitions
+
+    return mean_syn
