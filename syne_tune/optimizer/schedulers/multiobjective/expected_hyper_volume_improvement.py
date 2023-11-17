@@ -26,11 +26,14 @@ from botorch.utils import standardize
 from botorch.sampling.samplers import SobolQMCNormalSampler
 from botorch.utils.transforms import normalize
 from botorch.utils.multi_objective.box_decompositions import NondominatedPartitioning
-from botorch.acquisition.multi_objective.monte_carlo import qExpectedHypervolumeImprovement
+from botorch.acquisition.multi_objective.monte_carlo import (
+    qExpectedHypervolumeImprovement,
+)
 from botorch.optim import optimize_acqf
 from botorch.exceptions.errors import ModelFittingError
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from linear_operator.utils.errors import NotPSDError
+
 # except ImportError:
 #     print(try_import_botorch_message())
 
@@ -43,6 +46,7 @@ logger = logging.getLogger(__name__)
 
 NOISE_LEVEL = 1e-3
 MC_SAMPLES = 128
+
 
 class ExpectedHyperVolumeImprovement(StochasticAndFilterDuplicatesSearcher):
     """
@@ -209,8 +213,7 @@ class ExpectedHyperVolumeImprovement(StochasticAndFilterDuplicatesSearcher):
                 subsample = False
 
             X_tensor = Tensor(X)
-            bounds = torch.stack([Y.min(0).values,
-                                  Y.max(0).values])
+            bounds = torch.stack([Y.min(0).values, Y.max(0).values])
 
             noise_std = NOISE_LEVEL
             Y += noise_std * randn_like(Y)
@@ -224,8 +227,9 @@ class ExpectedHyperVolumeImprovement(StochasticAndFilterDuplicatesSearcher):
             else:
                 X_pending = None
             sampler = SobolQMCNormalSampler(num_samples=MC_SAMPLES)
-            partitioning = NondominatedPartitioning(ref_point=self.ref_point,
-                                                    Y=Y_tensor)
+            partitioning = NondominatedPartitioning(
+                ref_point=self.ref_point, Y=Y_tensor
+            )
             acq_func = qExpectedHypervolumeImprovement(
                 model=gp,
                 ref_point=self.ref_point,  # use known reference point
@@ -251,7 +255,9 @@ class ExpectedHyperVolumeImprovement(StochasticAndFilterDuplicatesSearcher):
                         "Optimization of the acquisition function yielded a config that was already seen."
                     )
                     config = None
-            return self._sample_and_pick_acq_best(acq_func) if config is None else config
+            return (
+                self._sample_and_pick_acq_best(acq_func) if config is None else config
+            )
         except NotPSDError as _:
             logging.warning("Chlolesky inversion failed, sampling randomly.")
             return self._get_random_config()
@@ -325,20 +331,19 @@ class ExpectedHyperVolumeImprovement(StochasticAndFilterDuplicatesSearcher):
         return self._mode
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     from syne_tune.config_space import uniform
-    from syne_tune.optimizer.schedulers.searchers.utils import make_hyperparameter_ranges
+    from syne_tune.optimizer.schedulers.searchers.utils import (
+        make_hyperparameter_ranges,
+    )
 
     random_seed = 31415927
     random_state = np.random.RandomState(random_seed)
     hp_cols = ("x0", "x1", "x2")
-    config_space = {
-        node: uniform(0, 1)
-        for node in hp_cols
-    }
-    metric = ["error", 'size']
-    mode = ['min', 'min']
+    config_space = {node: uniform(0, 1) for node in hp_cols}
+    metric = ["error", "size"]
+    mode = ["min", "min"]
     searcher = ExpectedHyperVolumeImprovement(
         config_space=config_space,
         metric=metric,
@@ -352,9 +357,7 @@ if __name__ == '__main__':
     configs = hp_ranges.random_configs(random_state, num_data)
     metric_values = random_state.randn(num_data, len(metric))
     # Feed data to searcher
-    for trial_id, config, metric_val in zip(
-        trial_ids, configs, metric_values
-    ):
+    for trial_id, config, metric_val in zip(trial_ids, configs, metric_values):
         searcher.get_config(trial_id=trial_id)
 
         result = {name: value for name, value in zip(metric, metric_val)}
@@ -363,4 +366,3 @@ if __name__ == '__main__':
             config=config,
             result=result,
         )
-
