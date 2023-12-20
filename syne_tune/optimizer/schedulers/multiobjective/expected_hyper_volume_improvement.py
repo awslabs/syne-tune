@@ -23,7 +23,7 @@ from botorch.models import SingleTaskGP
 from botorch.fit import fit_gpytorch_mll
 from botorch.models.transforms import Warp
 from botorch.utils import standardize
-from botorch.sampling.samplers import SobolQMCNormalSampler
+from botorch.sampling import SobolQMCNormalSampler
 from botorch.utils.transforms import normalize
 from botorch.utils.multi_objective.box_decompositions import NondominatedPartitioning
 from botorch.acquisition.multi_objective.monte_carlo import (
