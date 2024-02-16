@@ -22,6 +22,7 @@ from syne_tune.optimizer.baselines import (
     MORandomScalarizationBayesOpt,
     MOASHA,
 )
+
 # from ehvi import EHVI
 from syne_tune.optimizer.schedulers.multiobjective.linear_scalarizer import (
     LinearScalarizedScheduler,
