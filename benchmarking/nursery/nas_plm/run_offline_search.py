@@ -13,10 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Finetuning the library models for sequence classification on GLUE."""
 import json
 
-# You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 import os
 import time
 import logging
@@ -56,7 +54,6 @@ from hf_args import DataTrainingArguments, ModelArguments, parse_model_name
 from data_wrapper import Glue, IMDB, SWAG
 from mask import mask_bert, mask_gpt, mask_gpt_neox
 from multi_objective import get_pareto_optimal
-from sampler import MetaSamplerDKESmallSearchSpace
 from model_data import get_model_data
 
 
@@ -65,7 +62,6 @@ SEARCHSPACES = {
     "medium": MediumSearchSpace,
     "layer": LayerSearchSpace,
     "uniform": FullSearchSpace,
-    "meta_small_kde": MetaSamplerDKESmallSearchSpace,
     "smallpower2": partial(SmallSearchSpace, power_of_2_encoding=True),
 }
 
@@ -225,11 +221,6 @@ def main():
         return 1 - eval_metric[metric_name], n_params / n_params_super_net
 
     kwargs = {"rng": np.random.RandomState(seed=training_args.seed)}
-    if search_args.search_space == "meta_small_kde":
-        kwargs["dataset_name"] = data_args.task_name
-        kwargs["num_tasks"] = 1
-        kwargs["data_path"] = f"meta_model/meta_data_{model_type}.json"
-        print(kwargs)
     search_space = SEARCHSPACES[search_args.search_space](model.config, **kwargs)
 
     if search_args.optimize_memory_footprint:
