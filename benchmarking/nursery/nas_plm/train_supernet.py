@@ -56,8 +56,7 @@ from sampling import (
 from task_data import GLUE_TASK_INFO
 from mask import mask_bert, mask_roberta, mask_gpt, mask_gpt_neox
 from hf_args import DataTrainingArguments, ModelArguments, parse_model_name
-from data_wrapper import Glue, IMDB, SWAG, AlpacaDataset
-from sampler import MetaSamplerDKESmallSearchSpace
+from data_wrapper import Glue, IMDB, SWAG
 
 
 def kd_loss(
@@ -80,7 +79,6 @@ def kd_loss(
 
 sampling = {
     "small": SmallSearchSpace,
-    "meta_small_kde": MetaSamplerDKESmallSearchSpace,
     "medium": MediumSearchSpace,
     "layer": LayerSearchSpace,
     "uniform": FullSearchSpace,
@@ -164,12 +162,6 @@ def main():
         )
         metric = evaluate.load("accuracy")
         metric_name = "accuracy"
-    elif data_args.task_name == "alpaca":
-        data = AlpacaDataset(
-            training_args=training_args, model_args=model_args, data_args=data_args
-        )
-        metric = evaluate.load("./cross_entropy.py")
-        metric_name = "cross_entropy"
 
     # elif data_args.task_name == "custom":
     #     data = Custom(training_args=training_args, model_args=model_args, data_args=data_args)
@@ -193,8 +185,6 @@ def main():
 
     if data_args.task_name in ["swag"]:
         model_cls = AutoModelForMultipleChoice
-    elif data_args.task_name in ["alpaca"]:
-        model_cls = AutoModelForCausalLM
     else:
         model_cls = AutoModelForSequenceClassification
     model = model_cls.from_pretrained(
@@ -211,24 +201,6 @@ def main():
         # if tokenizer.pad_token is None:
         #     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         # model.resize_token_embeddings(len(tokenizer))
-
-    if data_args.task_name == "alpaca":
-
-        model.resize_token_embeddings(len(data.tokenizer))
-
-        if data.num_new_tokens > 0:
-            input_embeddings = model.get_input_embeddings().weight.data
-            output_embeddings = model.get_output_embeddings().weight.data
-
-            input_embeddings_avg = input_embeddings[: -data.num_new_tokens].mean(
-                dim=0, keepdim=True
-            )
-            output_embeddings_avg = output_embeddings[: -data.num_new_tokens].mean(
-                dim=0, keepdim=True
-            )
-
-            input_embeddings[-data.num_new_tokens :] = input_embeddings_avg
-            output_embeddings[-data.num_new_tokens :] = output_embeddings_avg
 
     optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
 
