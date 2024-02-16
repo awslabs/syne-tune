@@ -19,6 +19,7 @@ based NAS. Our weight-sharing based NAS approach consists of two stages:
 ## Install
 
 To get started, first install SyneTune:
+
 ```bash
 pip install -e .
 ```
@@ -42,6 +43,7 @@ To implement a new method, follow the Syne Tune interface and link your method i
 ## Standard NAS
 
 To run standard NAS, use the following script. This will run NAS using random search for 3600 seconds on the RTE dataset.
+
 ```python run_nas.py --output_dir=./output_standard_nas --model_name bert-base-cased --dataset rte --runtime 3600 --method random_search --num_train_epochs 5 --seed 0 --dataset_seed 0```
 
 ## Weight-sharing NAS

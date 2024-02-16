@@ -122,7 +122,6 @@ def main():
 
     if int(training_args.seed) == -1:
         training_args.seed = np.random.randint(2**32 - 1)
-    print(training_args.seed)
     set_seed(training_args.seed)
 
     model_type = parse_model_name(model_args)
@@ -270,7 +269,6 @@ def main():
             scheduler.tell(trial_suggestion, {"error": error, "memory": memory})
             costs[i][0] = error
             costs[i][1] = memory
-            print(memory)
         else:
             scheduler.tell(trial_suggestion, {"error": error, "params": params})
             costs[i][0] = error
@@ -282,7 +280,6 @@ def main():
         print(
             f"iteration {i}: error={error} ; params={params}; runtime = {runtime[-1]}"
         )
-        print(trial_suggestion.config)
     idx = get_pareto_optimal(costs)
     indices = np.arange(costs.shape[0])[idx]
     masks = [masks[i] for i in indices]
