@@ -193,7 +193,7 @@ def main():
 
     if data_args.task_name in ["swag"]:
         model_cls = AutoModelForMultipleChoice
-    elif data_args.task_name in ['alpaca']:
+    elif data_args.task_name in ["alpaca"]:
         model_cls = AutoModelForCausalLM
     else:
         model_cls = AutoModelForSequenceClassification
@@ -212,7 +212,7 @@ def main():
         #     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         # model.resize_token_embeddings(len(tokenizer))
 
-    if data_args.task_name == 'alpaca':
+    if data_args.task_name == "alpaca":
 
         model.resize_token_embeddings(len(data.tokenizer))
 
@@ -220,15 +220,15 @@ def main():
             input_embeddings = model.get_input_embeddings().weight.data
             output_embeddings = model.get_output_embeddings().weight.data
 
-            input_embeddings_avg = input_embeddings[:-data.num_new_tokens].mean(
+            input_embeddings_avg = input_embeddings[: -data.num_new_tokens].mean(
                 dim=0, keepdim=True
             )
-            output_embeddings_avg = output_embeddings[:-data.num_new_tokens].mean(
+            output_embeddings_avg = output_embeddings[: -data.num_new_tokens].mean(
                 dim=0, keepdim=True
             )
 
-            input_embeddings[-data.num_new_tokens:] = input_embeddings_avg
-            output_embeddings[-data.num_new_tokens:] = output_embeddings_avg
+            input_embeddings[-data.num_new_tokens :] = input_embeddings_avg
+            output_embeddings[-data.num_new_tokens :] = output_embeddings_avg
 
     optimizer = AdamW(model.parameters(), lr=training_args.learning_rate)
 

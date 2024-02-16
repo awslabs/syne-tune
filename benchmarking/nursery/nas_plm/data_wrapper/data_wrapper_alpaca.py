@@ -166,7 +166,6 @@ class DataCollatorForSupervisedDataset(object):
 
 
 class AlpacaDataset(DataWrapper):
-
     def _load_data(self):
 
         dataset = SupervisedDataset(
@@ -177,8 +176,10 @@ class AlpacaDataset(DataWrapper):
         n_train = int(len(dataset) * 0.6)
         n_valid = int(len(dataset) * 0.2)
         train_dataset = Subset(dataset, np.arange(n_train)).dataset
-        valid_dataset = Subset(dataset, np.arange(n_train, n_train+n_valid)).dataset
-        test_dataset = Subset(dataset, np.arange(n_train+n_valid, len(dataset))).dataset
+        valid_dataset = Subset(dataset, np.arange(n_train, n_train + n_valid)).dataset
+        test_dataset = Subset(
+            dataset, np.arange(n_train + n_valid, len(dataset))
+        ).dataset
 
         return train_dataset, valid_dataset, test_dataset
 

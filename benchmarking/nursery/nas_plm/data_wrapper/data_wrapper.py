@@ -91,7 +91,7 @@ class DataWrapper(object):
         return num_labels
 
     def get_tokenizer(self):
-         return AutoTokenizer.from_pretrained(
+        return AutoTokenizer.from_pretrained(
             self.model_type,
             cache_dir=self.model_args.cache_dir,
             use_fast=self.model_args.use_fast_tokenizer,
