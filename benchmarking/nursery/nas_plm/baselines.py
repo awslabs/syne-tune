@@ -20,10 +20,9 @@ from syne_tune.optimizer.baselines import (
     MOREA,
     NSGA2,
     MORandomScalarizationBayesOpt,
-    # MOASHA,
+    MOASHA,
 )
-from ehvi import EHVI
-from moasha import MOASHA
+# from ehvi import EHVI
 from syne_tune.optimizer.schedulers.multiobjective.linear_scalarizer import (
     LinearScalarizedScheduler,
 )

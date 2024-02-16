@@ -18,7 +18,12 @@ based NAS. Our weight-sharing based NAS approach consists of two stages:
 
 ## Install
 
-To get started, install the dependencies via:
+To get started, first install SyneTune:
+```bash
+pip install -e .
+```
+
+Afterwards, we install the dependencies via:
 
 ```bash
 cd benchmarking/nursery/nas_plm
@@ -36,8 +41,8 @@ To implement a new method, follow the Syne Tune interface and link your method i
 
 ## Standard NAS
 
-To run standard NAS, use the following script. This will run NAS using EHVI for 3600 seconds on the RTE dataset.
-```python run_nas.py --output_dir=./output_standard_nas --model_name bert-base-cased --dataset rte --runtime 3600 --method ehvi --num_train_epochs 5 --seed 0 --dataset_seed 0```
+To run standard NAS, use the following script. This will run NAS using random search for 3600 seconds on the RTE dataset.
+```python run_nas.py --output_dir=./output_standard_nas --model_name bert-base-cased --dataset rte --runtime 3600 --method random_search --num_train_epochs 5 --seed 0 --dataset_seed 0```
 
 ## Weight-sharing NAS
 
@@ -61,7 +66,7 @@ See the paper for a detailed description.
 
 Next, we use the model checkpoint from the previous step to perform the multi-objective search:
 
-```python run_offline_search.py --model_name_or_path bert-base-cased --num_samples 500 --output_dir ./results_nas  --checkpoint_dir_model ./supernet_model_checkpoint --search_space small --search_strategy local_search --seed 0 --task_name rte``` 
+```python run_offline_search.py --model_name_or_path bert-base-cased --num_samples 100 --output_dir ./results_nas  --checkpoint_dir_model ./supernet_model_checkpoint --search_space small --search_strategy random_search --seed 0 --task_name rte``` 
 
 Make sure that `checkpoint_dir_model` points to the directory with the model checkpoint from the previous step. 
 Results will be saved as a json file in `output_dir`.
