@@ -6,15 +6,8 @@ protobuf==3.20.*
 pandas
 datasets
 scikit-learn
-# torch
-# tokenizers
-tensorboardx
 evaluate
-transformers
-# deepspeed>=0.8.2
+transformers[torch]
 sortedcontainers
-# git+https://github.com/huggingface/accelerate.git
-cupy-cuda11x  # for pruning
 botorch==0.7.2
 autograd>=1.3
-pre-commit
