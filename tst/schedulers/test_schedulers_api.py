@@ -34,6 +34,7 @@ from syne_tune.optimizer.baselines import (
     DyHPO,
     PASHA,
     REA,
+    EHVI,
     SyncHyperband,
     SyncBOHB,
     SyncMOBSTER,
@@ -475,6 +476,13 @@ if sys.version_info >= (3, 8):
         BoTorch(
             config_space=config_space,
             metric=metric1,
+            mode=mode,
+        ),
+    )
+    list_schedulers_to_test.append(
+        EHVI(
+            config_space=config_space,
+            metric=[metric1, metric2],
             mode=mode,
         ),
     )

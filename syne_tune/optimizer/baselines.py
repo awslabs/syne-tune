@@ -1287,6 +1287,61 @@ except ImportError:
         )
     )
 
+try:
+    from syne_tune.optimizer.schedulers.multiobjective.expected_hyper_volume_improvement import (
+        ExpectedHyperVolumeImprovement,
+    )
+
+    class EHVI(FIFOScheduler):
+        """
+        Implements the Expected Hypervolume Improvement method.
+
+        See :class:`~syne_tune.optimizer.schedulers.searchers.RandomSearcher`
+        for ``kwargs["search_options"]`` parameters.
+
+        :param config_space: Configuration space for evaluation function
+        :param metric: Name of metric to optimize
+        :param population_size: See
+            :class:`~syne_tune.optimizer.schedulers.searchers.RegularizedEvolution`.
+            Defaults to 100
+        :param sample_size: See
+            :class:`~syne_tune.optimizer.schedulers.searchers.RegularizedEvolution`.
+            Defaults to 10
+        :param random_seed: Random seed, optional
+        :param kwargs: Additional arguments to
+            :class:`~syne_tune.optimizer.schedulers.FIFOScheduler`
+        """
+
+        def __init__(
+            self,
+            config_space: Dict[str, Any],
+            metric: List[str],
+            mode: Union[List[str], str] = "min",
+            random_seed: Optional[int] = None,
+            **kwargs,
+        ):
+            searcher_kwargs = _create_searcher_kwargs(
+                config_space, metric, random_seed, kwargs
+            )
+            searcher_kwargs["mode"] = mode
+            print(mode)
+
+            super(EHVI, self).__init__(
+                config_space=config_space,
+                metric=metric,
+                mode=mode,
+                searcher=ExpectedHyperVolumeImprovement(**searcher_kwargs),
+                random_seed=random_seed,
+                **kwargs,
+            )
+
+except ImportError:
+    logging.info(
+        _try_import_message(
+            message_text="EHVI is not imported (not contained in extra)",
+            tag="ehvi",
+        )
+    )
 # Dictionary that allows to also list baselines who don't need a wrapper class
 # such as :class:`PopulationBasedTraining`
 baselines_dict = {

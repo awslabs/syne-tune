@@ -242,7 +242,7 @@ class FIFOScheduler(TrialSchedulerWithSearcher):
         else:
             len_mode = 1
         if len_mode == 1:
-            mode = [mode * num_objectives]
+            mode = [mode] * num_objectives
         allowed_values = {"min", "max"}
         assert all(
             x in allowed_values for x in mode
