@@ -11,7 +11,7 @@ ipykernel
 pypandoc_binary
 sphinx-rtd-theme
 sphinx-autodoc-typehints
-traitlets<=5.11.2
+traitlets<=5.14.2
 myst-parser
 sphinx_copybutton
 sphinxcontrib-bibtex
