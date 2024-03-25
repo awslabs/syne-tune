@@ -1,5 +1,5 @@
 pytest
-pytest-cov~=4.1.0
+pytest-cov~=5.0.0
 pytest-timeout
 # 22.1.0 fails with sphinx:
 # https://github.com/psf/black/issues/2964
